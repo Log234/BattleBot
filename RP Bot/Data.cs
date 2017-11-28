@@ -171,12 +171,12 @@ namespace RP_Bot
             Channel curChannel;
             if (!Data.channels.TryGetValue(channel.Id, out curChannel))
             {
-                if ((channel as SocketGuildChannel) == null)
+                if (channel is SocketGuildChannel)
                 {
-                    curChannel = new Channel(channel);
+                    curChannel = new GuildChannel((SocketGuildChannel)channel);
                 } else
                 {
-                    curChannel = new GuildChannel((SocketGuildChannel) channel);
+                    curChannel = new Channel(channel);
                 }
                 Data.channels[channel.Id] = curChannel;
             }
@@ -229,7 +229,88 @@ namespace RP_Bot
     // Characters
     class Character
     {
-        string name;
-        int health;
+        public string Name { get; }
+        public HashSet<string> aliases = new HashSet<string>();
+        public List<Ward> wards = new List<Ward>();
+        public int Health { get; set; }
+        public int Maxhealth { get; set; }
+
+        public Character(string name, int health, int maxhealth)
+        {
+            this.Name = name;
+            this.Health = health;
+            this.Maxhealth = maxhealth;
+        }
+
+        public Character CopyOf()
+        {
+            return new Character(Name, Health, Maxhealth);
+        }
+
+        public void TakeDamage(int amount)
+        {
+            for (int i = 0; i < wards.Count; i++)
+            {
+                amount = wards[i].TakeDamage(amount);
+                if (wards[i].Shield == 0) wards.RemoveAt(i);
+                if (amount == 0) return;
+            }
+            Health -= amount;
+            if (Health < 0) Health = 0;
+        }
+
+        public void Heal(int amount)
+        {
+            Health += amount;
+            if (Health > Maxhealth) Health = Maxhealth;
+        }
+
+        public void Ward(Ward ward)
+        {
+            wards.Add(ward);
+        }
+
+
+    }
+
+    // Wards
+    class Ward
+    {
+        public int Shield { get; internal set; }
+        public int Duration { get; internal set; }
+
+        public Ward(int shield, int duration)
+        {
+            this.Shield = shield;
+            this.Duration = duration;
+        }
+
+        public int TakeDamage(int amount)
+        {
+            int remainder = amount - Shield;
+            if (remainder > 0) return remainder;
+            return 0;
+        }
+
+        public int NextRound()
+        {
+            return Duration--;
+        }
+    }
+
+    // DoTs
+    class Dot
+    {
+        public int Damage { get; }
+        public int Frequency { get; }
+        public int Duration { get; internal set; }
+
+        public Dot(int dmg, int freq, int dur)
+        {
+            Damage = dmg;
+            Frequency = freq;
+            Duration = dur;
+        }
+
     }
 }

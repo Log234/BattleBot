@@ -58,6 +58,7 @@ namespace RP_Bot
 
         // Character commands
         [Group("character")]
+        [Summary("All character related commands per event.")]
         public class EventCharacterModule : ModuleBase<SocketCommandContext>
         {
 
@@ -65,12 +66,19 @@ namespace RP_Bot
             [Group("set")]
             public class EventCharacterSetModule : ModuleBase<SocketCommandContext>
             {
+                // Set max health
+                [Command("maxhealth")]
+                [Summary("Sets the max health for the given character during this event.")]
+                public async Task MaxHealth(string charId, int health)
+                {
 
+                }
             }
         }
     }
 
     [Group("character")]
+    [Summary("All global character related commands.")]
     public class CharacterModule : ModuleBase<SocketCommandContext>
     {
 
