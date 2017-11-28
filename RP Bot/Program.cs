@@ -12,6 +12,7 @@ namespace RP_Bot
 
     public class Program
     {
+        private Cleanup _cleanup;
         private CommandService _commands;
         private DiscordSocketClient _client;
         private IServiceProvider _services;
@@ -20,10 +21,16 @@ namespace RP_Bot
 
         public async Task StartAsync()
         {
-            _client = new DiscordSocketClient();
-            _commands = new CommandService();
+            _cleanup = new Cleanup();
+            _client = new DiscordSocketClient(new DiscordSocketConfig
+            {
+                LogLevel = LogSeverity.Info
+            });
 
-            // Avoid hard coding your token. Use an external source instead in your code.
+            _client.Log += Log;
+            _commands = new CommandService();
+            _commands.Log += Log;
+            
             string token = System.IO.File.ReadAllText(@"C:\Secrets\RP-Bot.txt");
 
             _services = new ServiceCollection()
@@ -37,6 +44,11 @@ namespace RP_Bot
             await _client.StartAsync();
 
             await Task.Delay(-1);
+        }
+        private Task Log(LogMessage message)
+        {
+            Console.WriteLine(message.ToString());
+            return Task.CompletedTask;
         }
 
         public async Task InstallCommandsAsync()
