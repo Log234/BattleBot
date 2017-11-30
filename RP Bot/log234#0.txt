@@ -1,0 +1,49 @@
+
+Varda Elentàri was added to log234#0.
+Barbossa was added to log234#0.
+The team Aldmeri Dominion was added to log234#0.
+The team Pirates was added to log234#0.
+The event **log234#0** started!
+<@!174426714120781824> 
+Varda Elentàri attempts to attack Barbossa:
+Varda Elentàri **hit** Barbossa and did **1** damage. (rolled: 9)
+0 action points remaining.
+
+
+-------------- Round 1 is done --------------
+Aldmeri Dominion:
+Varda Elentàri: 3 / 3
+
+Pirates:
+Barbossa: 3 / 4
+
+Varda Elentàri attempts to attack Barbossa:
+Varda Elentàri **hit** Barbossa and did **1** damage. (rolled: 8)
+0 action points remaining.
+
+
+-------------- Round 2 is done --------------
+Aldmeri Dominion:
+Varda Elentàri: 3 / 3
+
+Pirates:
+Barbossa: 2 / 4
+
+Varda Elentàri attempts to attack Barbossa:
+Varda Elentàri **hit** Barbossa and did **1** damage. (rolled: 8)
+0 action points remaining.
+
+
+-------------- Round 3 is done --------------
+Aldmeri Dominion:
+Varda Elentàri: 3 / 3
+
+Pirates:
+Barbossa: 1 / 4
+
+Varda Elentàri attempts to attack Barbossa:
+Varda Elentàri **hit** Barbossa and did **1** damage. (rolled: 9)
+0 action points remaining.
+
+
+-------------- Aldmeri Dominion has won! --------------

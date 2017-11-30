@@ -54,6 +54,31 @@ namespace RP_Bot
             await ReplyAsync(curEvent.Start(Data.GetUser(Context.Message.Author)));
         }
 
+        // Start an event
+        [Command("finish")]
+        [Summary("Finishes an existing RP event.")]
+        public async Task FinishEvent(string eventId = "Active")
+        {
+            ulong channelId = Context.Message.Channel.Id;
+            Event curEvent = Data.GetEvent(channelId, eventId);
+            if (curEvent == null)
+            {
+                await ReplyAsync($"Could not find any event in this channel with that ID.");
+                return;
+            }
+
+            User user = Data.GetUser(Context.Message.Author);
+            if (!curEvent.IsAdmin(user))
+            {
+                await ReplyAsync("You do not have permission to end this event.");
+                return;
+            }
+
+            string path = curEvent.Finish();
+            await Context.Channel.SendFileAsync(curEvent.Finish(), "Event finished, here is the log.");
+            System.IO.File.Delete(path);
+        }
+
         // Join an event
         [Command("join")]
         [Summary("Join an event without a character.")]
@@ -163,6 +188,16 @@ namespace RP_Bot
                     };
                     await ReplyAsync(curEvent.AddCharacter(character, user));
                 }
+
+                // Create a new team for this event
+                [Command("team")]
+                [Summary("Create a new team for this event.")]
+                public async Task NewTeam([Remainder] string name)
+                {
+                    Event curEvent = Data.GetEvent(Context, "Active");
+                    
+                    await ReplyAsync(curEvent.AddTeam(name));
+                }
             }
         }
 
@@ -208,6 +243,35 @@ namespace RP_Bot
                 }
             }
 
+            // Set team
+            [Command("team")]
+            [Summary("Adds the character to a team.")]
+            public async Task Team(string charAlias, string teamAlias, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                Character character = curEvent.GetCharacter(charAlias);
+                if (character == null)
+                {
+                    await ReplyAsync("Could not find that character.");
+                    return;
+                }
+
+                Team team = curEvent.GetTeam(teamAlias);
+                if (character == null)
+                {
+                    await ReplyAsync("Could not find that team.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.SetTeam(character, team));
+            }
+
             // Set max health
             [Command("maxhealth")]
             [Summary("Sets the max health for the given character during this event.")]
@@ -229,6 +293,7 @@ namespace RP_Bot
 
                 await ReplyAsync(curEvent.SetMaxhealth(character, health));
             }
+
             // Set health
             [Command("health")]
             [Summary("Sets the health for the given character during this event.")]

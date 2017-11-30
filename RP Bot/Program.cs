@@ -31,7 +31,7 @@ namespace RP_Bot
             _commands = new CommandService();
             _commands.Log += Log;
             
-            string token = System.IO.File.ReadAllText(@"C:\Secrets\RP-Bot.txt");
+            string token = System.IO.File.ReadAllText(@"C:\Secrets\BattleBot.txt");
 
             _services = new ServiceCollection()
                 .AddSingleton(_client)
