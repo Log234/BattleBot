@@ -21,6 +21,8 @@ namespace RP_Bot
 
         public async Task StartAsync()
         {
+            Data.Load();
+
             _cleanup = new Cleanup();
             _client = new DiscordSocketClient(new DiscordSocketConfig
             {

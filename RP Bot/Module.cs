@@ -4,23 +4,10 @@ using System.Text;
 
 namespace RP_Bot
 {
+    using Discord;
     using Discord.Commands;
     using Discord.WebSocket;
     using System.Threading.Tasks;
-
-    [Group("rphelp")]
-    public class InfoModule : ModuleBase<SocketCommandContext>
-    {
-        // Help
-
-        // Ping
-        [Command("ping")]
-        [Summary("Verifies that the bot functions correctly.")]
-        public async Task Ping()
-        {
-            await ReplyAsync("Pong!");
-        }
-    }
 
     [Group("event")]
     public class EventModule : ModuleBase<SocketCommandContext>
@@ -123,18 +110,40 @@ namespace RP_Bot
         [Summary("Add characters or users to the event.")]
         public class EventAddModule : ModuleBase<SocketCommandContext>
         {
+            // Add an admin
+            [Command("admin")]
+            [Summary("Add an administrator to the event.")]
+            public async Task AddAdmin(SocketUser user, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to add an administrator to this event.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.AddAdmin(Data.GetUser(user)));
+            }
+
             // Add a character
             [Command("character")]
             [Summary("Add a character to the event.")]
             public async Task AddCharacter(string alias, string eventId = "Active")
             {
                 Event curEvent = Data.GetEvent(Context, eventId);
-
                 if (curEvent == null)
                 {
                     await ReplyAsync("Could not find the event.");
                     return;
                 }
+
                 User user = Data.GetUser(Context.Message.Author);
                 Character character = user.GetCharacter(alias);
 
@@ -195,9 +204,70 @@ namespace RP_Bot
                 public async Task NewTeam([Remainder] string name)
                 {
                     Event curEvent = Data.GetEvent(Context, "Active");
-                    
+
                     await ReplyAsync(curEvent.AddTeam(name));
                 }
+            }
+        }
+
+        // Remove x from an event
+        [Group("remove")]
+        [Summary("Remove characters, teams and more from the event.")]
+        public class EventRemoveModule : ModuleBase<SocketCommandContext>
+        {
+            // Add an admin
+            [Command("admin")]
+            [Summary("Remove an administrator from the event.")]
+            public async Task RemoveAdmin(SocketUser user, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to add an administrator to this event.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.RemoveAdmin(Data.GetUser(user)));
+            }
+
+            // Create a new character for this event
+            [Command("character")]
+            [Alias("npc")]
+            [Summary("Remove a character from the event.")]
+            public async Task RemoveCharacter(string alias)
+            {
+                Event curEvent = Data.GetEvent(Context, "Active");
+                Character character = curEvent.GetCharacter(alias);
+                if (character == null)
+                {
+                    await ReplyAsync($"Could not find that character.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.RemoveCharacter(character));
+            }
+
+            // Create a new team for this event
+            [Command("team")]
+            [Summary("Create a new team for this event.")]
+            public async Task NewTeam(string alias)
+            {
+                Event curEvent = Data.GetEvent(Context, "Active");
+                Team team = curEvent.GetTeam(alias);
+                if (team == null)
+                {
+                    await ReplyAsync("Could not find that character.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.RemoveTeam(team));
             }
         }
 
@@ -415,5 +485,17 @@ namespace RP_Bot
     public class CharacterModule : ModuleBase<SocketCommandContext>
     {
 
+    }
+
+    [Summary("General stuff.")]
+    public class EtcModule : ModuleBase<SocketCommandContext>
+    {
+        // Hugs
+        [Command("hug")]
+        [Summary("Hugs.")]
+        public async Task Hug()
+        {
+            await ReplyAsync($"-hugs {Context.Message.Author.Mention}- :heart:");
+        }
     }
 }

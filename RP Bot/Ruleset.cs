@@ -135,7 +135,7 @@ namespace RP_Bot
             }
 
             if (character.Actionpoints < requiredPoints)
-                return "Insufficiant action points.";
+                return "Insufficient action points.";
             else
                 character.Action(requiredPoints);
 
@@ -180,7 +180,7 @@ namespace RP_Bot
             }
 
             if (character.Actionpoints < requiredPoints)
-                return "Insufficiant action points.";
+                return "Insufficient action points.";
             else
                 character.Action(requiredPoints);
 

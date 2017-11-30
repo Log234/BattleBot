@@ -9,13 +9,24 @@ namespace RP_Bot
 {
     static class Data
     {
-        public static Dictionary<ulong, User> users = new Dictionary<ulong, User>();
-        public static Dictionary<ulong, Guild> guilds = new Dictionary<ulong, Guild>();
-        public static Dictionary<ulong, Channel> channels = new Dictionary<ulong, Channel>();
+
+        class Storage
+        {
+            public Dictionary<ulong, User> users = new Dictionary<ulong, User>();
+            public Dictionary<ulong, Guild> guilds = new Dictionary<ulong, Guild>();
+            public Dictionary<ulong, Channel> channels = new Dictionary<ulong, Channel>();
+        }
+
+        private static Storage storage = new Storage();
+
+        static Storage GetStorage
+        {
+            get { return storage; }
+        }
 
         public static Event GetEvent(ulong channelId, string eventId)
         {
-            if (!channels.TryGetValue(channelId, out Channel channel))
+            if (!storage.channels.TryGetValue(channelId, out Channel channel))
             {
                 return null;
             }
@@ -31,10 +42,10 @@ namespace RP_Bot
         // Gets or creates a guild based on a
         public static Guild GetGuild(SocketGuild guild)
         {
-            if (!Data.guilds.TryGetValue(guild.Id, out Guild curGuild))
+            if (!storage.guilds.TryGetValue(guild.Id, out Guild curGuild))
             {
                 curGuild = new Guild(guild);
-                guilds[guild.Id] = curGuild;
+                storage.guilds[guild.Id] = curGuild;
             }
 
             return curGuild;
@@ -43,7 +54,7 @@ namespace RP_Bot
         // Gets or creates a channel based on a SocketChannel
         public static Channel GetChannel(SocketChannel channel)
         {
-            if (!Data.channels.TryGetValue(channel.Id, out Channel curChannel))
+            if (!storage.channels.TryGetValue(channel.Id, out Channel curChannel))
             {
                 if (channel is SocketGuildChannel)
                 {
@@ -53,7 +64,7 @@ namespace RP_Bot
                 {
                     curChannel = new Channel(channel);
                 }
-                Data.channels[channel.Id] = curChannel;
+                storage.channels[channel.Id] = curChannel;
             }
 
             return curChannel;
@@ -62,10 +73,21 @@ namespace RP_Bot
         // Gets or creates a user based on a SocketUser
         public static User GetUser(SocketUser user)
         {
-            if (!Data.users.TryGetValue(user.Id, out User curUser))
+            if (!storage.users.TryGetValue(user.Id, out User curUser))
             {
                 curUser = new User(user);
-                Data.users.Add(user.Id, curUser);
+                storage.users.Add(user.Id, curUser);
+            }
+
+            return curUser;
+        }
+
+        // Gets or creates a user based on a SocketUser
+        public static User GetUser(ulong userId)
+        {
+            if (!storage.users.TryGetValue(userId, out User curUser))
+            {
+                return null;
             }
 
             return curUser;
@@ -77,14 +99,57 @@ namespace RP_Bot
             Event curEvent;
             if (eventId.Equals("Active"))
             {
-                curEvent = Data.users[Context.Message.Author.Id]?.activeEvents[Context.Channel.Id];
+                curEvent = storage.users[Context.Message.Author.Id]?.activeEvents[Context.Channel.Id];
             }
             else
             {
-                curEvent = Data.channels[Context.Channel.Id]?.events[eventId];
+                curEvent = storage.channels[Context.Channel.Id]?.events[eventId];
             }
 
             return curEvent;
+        }
+
+        // Save and exit
+        public static void Exit()
+        {
+            Save();
+            Environment.Exit(0);
+
+        }
+
+        // Prepare for update
+        public static void Update()
+        {
+            Storage storage = GetStorage;
+            foreach (KeyValuePair<ulong, Channel> channel in storage.channels)
+            {
+                if (channel.Value.ActiveEvent != null)
+                {
+
+                }
+            }
+        }
+
+        private static void Save()
+        {
+            Storage storage = GetStorage;
+            using (Stream stream = File.Open("Data.dat", FileMode.Create))
+            {
+                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                binaryFormatter.Serialize(stream, storage);
+            }
+
+        }
+
+        public static void Load()
+        {
+            if (!File.Exists("Data.dat")) return;
+
+            using (Stream stream = File.Open("Data.dat", FileMode.Open))
+            {
+                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                storage =  (Storage)binaryFormatter.Deserialize(stream);
+            }
         }
     }
 
@@ -232,380 +297,6 @@ namespace RP_Bot
             Idle = DateTimeOffset.Now;
             return admins.Contains(user) || Guild.IsAdmin(user);
         }
-    }
-
-    class Event
-    {
-        public String Id { get; }
-        public Channel Channel { get; }
-        public DateTimeOffset Created { get; }
-        public DateTimeOffset Idle { get; set; }
-        public Ruleset Ruleset { get; set; }
-        public User Dm { get; }
-        private HashSet<ulong> admins = new HashSet<ulong>();
-        private List<Team> teams = new List<Team>();
-        public HashSet<Character> characters = new HashSet<Character>();
-        public HashSet<ulong> users = new HashSet<ulong>();
-
-        public int Round { get; internal set; }
-        private string log;
-
-        public Event(User dm, Channel channel)
-        {
-            Id = channel.GetEventName(dm);
-            Channel = channel;
-            Created = DateTimeOffset.Now;
-            Idle = DateTimeOffset.Now;
-            Ruleset = new AmentiaRuleset();
-            Dm = dm;
-            Round = 0;
-            log = "";
-
-            channel.events[Id] = this;
-            dm.activeEvents.Add(channel.Id, this);
-            users.Add(dm.Id);
-
-            Console.WriteLine("Created event: " + Id);
-        }
-
-        // Admins
-        public string AddAdmin(User user)
-        {
-            Idle = DateTimeOffset.Now;
-            admins.Add(user.Id);
-
-            return Log($"{user.Tag} has been added as administrator of {Id}.");
-        }
-
-        public string RemoveAdmin(User user)
-        {
-            Idle = DateTimeOffset.Now;
-            admins.Remove(user.Id);
-
-            return Log($"{user.Tag} is nolonger administrator of {Id}.");
-        }
-
-        public bool IsAdmin(User user)
-        {
-            Idle = DateTimeOffset.Now;
-            return admins.Contains(user.Id) || Dm.Equals(user) || Channel.IsAdmin(user);
-        }
-
-        // Commands
-
-        public string Start(User user)
-        {
-            Idle = DateTimeOffset.Now;
-
-            if (IsAdmin(user))
-            {
-                if (Channel.ActiveEvent == null)
-                {
-                    Round = 1;
-                    Channel.ActiveEvent = this;
-                    string msg = $"The event **{Id}** started!\n";
-                    foreach (ulong curUser in users)
-                    {
-                        msg += Data.users[curUser].SocketUser.Mention + " ";
-                    }
-
-                    return Log(msg);
-                }
-                else
-                {
-                    return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Id}.");
-                }
-            }
-            else
-            {
-                return Log("You do not have permission to start that event.");
-            }
-        }
-
-        public string Join(User user)
-        {
-            Idle = DateTimeOffset.Now;
-
-            if (!users.Contains(user.Id))
-            {
-                users.Add(user.Id);
-                user.SetActiveEvent(Channel.Id, this);
-
-                return Log($"{user.Username} has joined {Id}.");
-            }
-            else
-            {
-                return Log("You have already joined this event.");
-            }
-        }
-
-        public string Join(Character character, User user)
-        {
-            Idle = DateTimeOffset.Now;
-            if (HasStarted() && !Ruleset.JoinAfterStart && !IsAdmin(user))
-            {
-                return Log("The event has already started, so you cannot join.");
-            }
-
-            AddCharacter(character, user);
-            Join(user);
-
-            return Log($"{user.Username} has joined {Id}, with {character.Name}!");
-        }
-
-        public string AddCharacter(Character character, User user)
-        {
-            Idle = DateTimeOffset.Now;
-            if (HasStarted() && !Ruleset.JoinAfterStart && !IsAdmin(user))
-            {
-                return Log("The event has already started, so you cannot add a new character.");
-            }
-
-            Character joiner = character.CopyOf();
-
-            if (joiner.Npc)
-            {
-                joiner.Maxhealth = Ruleset.NpcMaxhealth;
-                joiner.Health = Ruleset.NpcMaxhealth;
-            }
-            else
-            {
-                joiner.Maxhealth = Ruleset.CharMaxhealth;
-                joiner.Health = Ruleset.CharMaxhealth;
-            }
-
-            if (HasStarted() && Ruleset.WaitOnJoin)
-                joiner.Actionpoints = 0;
-            else
-                joiner.Actionpoints = Ruleset.Actionpoints;
-            characters.Add(joiner);
-
-            return Log($"{character.Name} was added to {Id}.");
-        }
-
-        public string AddTeam(string name)
-        {
-            Team team = new Team(name);
-            teams.Add(team);
-
-            return Log($"The team {name} was added to {Id}.");
-        }
-
-        public string SetTeam(Character character, Team team)
-        {
-            string result = "";
-
-            foreach (Team curTeam in teams)
-            {
-                if (curTeam.members.Contains(character))
-                {
-                    result += $"{character.Name} was removed from {curTeam.Name}.\n";
-                    curTeam.members.Remove(character);
-                }
-            }
-            result += $"{character.Name} was added to {team.Name}.\n";
-            team.members.Add(character);
-
-            return Log(result);
-        }
-
-        public string SetMaxhealth(Character character, int health)
-        {
-            Idle = DateTimeOffset.Now;
-            character.Maxhealth = health;
-
-            return Log($"{character.Name}'s max health is now {health}.");
-        }
-
-        public string SetHealth(Character character, int health)
-        {
-            Idle = DateTimeOffset.Now;
-            character.Health = health;
-
-            return Log($"{character.Name}'s health is now {health}.");
-        }
-
-        public string Attack(Character character, Character[] targets)
-        {
-            Idle = DateTimeOffset.Now;
-            string result = Ruleset.Attack(character, targets);
-
-            return Log(CheckRound(result));
-        }
-
-        public string Heal(Character character, Character[] targets)
-        {
-            Idle = DateTimeOffset.Now;
-            string result = Ruleset.Heal(character, targets);
-
-            return Log(CheckRound(result));
-        }
-
-        public string Ward(Character character, Character[] targets)
-        {
-            Idle = DateTimeOffset.Now;
-            string result = Ruleset.Ward(character, targets);
-
-            return Log(CheckRound(result));
-        }
-
-        // Utilities
-
-        public bool HasStarted()
-        {
-            return Round > 0;
-        }
-
-        public string Log(string msg)
-        {
-            log += msg + "\n";
-            Console.WriteLine(msg);
-            return msg;
-        }
-
-        public string CheckRound(string result)
-        {
-            if (RemainingAP() != 0)
-                return result;
-
-            if (CheckVictoryCondition(result, out string sum))
-            {
-                Channel.ActiveEvent = null;
-                return sum;
-            }
-
-            foreach (Character character in characters)
-            {
-                character.UpdateWards();
-                if (character.Health > 0) character.Actionpoints = Ruleset.Actionpoints;
-            }
-
-            string status = result + RoundStatus();
-
-            return status;
-        }
-
-        public int RemainingAP()
-        {
-            int ap = 0;
-            foreach (Character character in characters)
-            {
-                if (!character.Npc) ap += character.Actionpoints;
-            }
-
-            return ap;
-        }
-
-        public bool CheckVictoryCondition(string result, out string sum)
-        {
-            if (teams.Count > 0)
-            {
-                List<Team> remaining = new List<Team>();
-
-                foreach (Team team in teams)
-                {
-                    if (!team.IsDead())
-                    {
-                        remaining.Add(team);
-                    }
-                }
-
-                if (remaining.Count == 1)
-                {
-                    sum = result + $"\n\n\n-------------- {remaining[0].Name} has won! --------------";
-                    return true;
-                }
-            }
-            sum = result;
-            return false;
-        }
-
-        public string RoundStatus()
-        {
-            string status = $"\n\n\n-------------- Round {Round++} is done --------------";
-
-            if (teams.Count > 0)
-            {
-                foreach (Team team in teams)
-                {
-                    status += "\n" + team.GetStatus() + "\n";
-                }
-            }
-            else
-            {
-                status += GetNpcStatus();
-            }
-
-            return status;
-        }
-
-        public string GetNpcStatus()
-        {
-            string status = "\nCharacters:";
-
-            foreach (Character character in characters)
-            {
-                if (!character.Npc) status += "\n" + character.GetStatus();
-            }
-
-            status += "\n\nNPCs:";
-
-            foreach (Character character in characters)
-            {
-                if (character.Npc) status += "\n" + character.GetStatus();
-            }
-
-            return status;
-        }
-
-        public string Finish()
-        {
-            string path = Id + ".txt";
-            File.WriteAllText(path, log);
-            Channel.events.Remove(Id);
-
-            foreach (ulong curUser in users)
-            {
-                User user = Data.users[curUser];
-                if (user?.activeEvents[Channel.Id]?.Id == Id)
-                {
-                    user.activeEvents.Remove(Channel.Id);
-                }
-            }
-
-            return path;
-        }
-
-        public Character GetCharacter(string alias)
-        {
-            alias = alias.ToLower();
-            foreach (Character character in characters)
-            {
-                foreach (string charAlias in character.aliases)
-                {
-                    if (alias.Equals(charAlias))
-                        return character;
-                }
-            }
-
-            return null;
-        }
-
-        public Team GetTeam(string alias)
-        {
-            alias = alias.ToLower();
-            foreach (Team team in teams)
-            {
-                foreach (string teamAlias in team.aliases)
-                {
-                    if (alias.Equals(teamAlias))
-                        return team;
-                }
-            }
-
-            return null;
-        }
-
     }
 
     // Teams
