@@ -24,7 +24,7 @@ namespace RP_Bot
             }
             else
             {
-                result += characters[0];
+                result += characters[0].Name;
             }
 
             return result;

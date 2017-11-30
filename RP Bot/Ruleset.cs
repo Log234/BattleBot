@@ -66,7 +66,7 @@ namespace RP_Bot
         {
             if (character.Actionpoints < 2)
             {
-                return "Insufficiant action points.";
+                return "Insufficient action points.";
             }
             else
             {
@@ -102,6 +102,8 @@ namespace RP_Bot
                 }
             }
 
+            result += "\n" + character.Actionpoints + " action points remaining.";
+
             return result;
         }
 
@@ -134,6 +136,8 @@ namespace RP_Bot
 
             if (character.Actionpoints < requiredPoints)
                 return "Insufficiant action points.";
+            else
+                character.Action(requiredPoints);
 
             string result = character.Name + " attempts to heal " + Utilities.AppendNames(targets) + ":";
             int roll;
@@ -158,6 +162,8 @@ namespace RP_Bot
                 }
             }
 
+            result += "\n" + character.Actionpoints + " action points remaining.";
+
             return result;
         }
 
@@ -175,6 +181,8 @@ namespace RP_Bot
 
             if (character.Actionpoints < requiredPoints)
                 return "Insufficiant action points.";
+            else
+                character.Action(requiredPoints);
 
             string result = character.Name + " attempts to ward " + Utilities.AppendNames(targets) + ":";
             int roll;
@@ -193,6 +201,8 @@ namespace RP_Bot
                     result += "\n" + character.Name + " **warded** " + targets[i].Name + ". (rolled: " + roll + ")";
                 }
             }
+
+            result += "\n" + character.Actionpoints + " action points remaining.";
 
             return result;
         }

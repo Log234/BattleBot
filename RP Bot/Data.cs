@@ -14,19 +14,29 @@ namespace RP_Bot
 
         public static Event GetEvent(ulong channelId, string eventId)
         {
-            Channel channel;
-            if (!channels.TryGetValue(channelId, out channel))
+            if (!channels.TryGetValue(channelId, out Channel channel))
             {
                 return null;
             }
             
-            Event curEvent;
-            if(!channel.events.TryGetValue(eventId, out curEvent))
+            if(!channel.events.TryGetValue(eventId, out Event curEvent))
             {
                 return null;
             }
 
             return curEvent;
+        }
+
+        // Gets or creates a guild based on a
+        public static Guild GetGuild(SocketGuild guild)
+        {
+            if (!Data.guilds.TryGetValue(guild.Id, out Guild curGuild))
+            {
+                curGuild = new Guild(guild);
+                guilds[guild.Id] = curGuild;
+            }
+
+            return curGuild;
         }
         
         // Gets or creates a channel based on a SocketChannel
@@ -54,6 +64,7 @@ namespace RP_Bot
             if (!Data.users.TryGetValue(user.Id, out User curUser))
             {
                 curUser = new User(user);
+                Data.users.Add(user.Id, curUser);
             }
 
             return curUser;
@@ -79,6 +90,7 @@ namespace RP_Bot
     class User
     {
         public ulong Id { get; }
+        public string Tag { get; }
         public string Username { get; }
         public string Discriminator { get; }
         public SocketUser SocketUser { get; }
@@ -92,6 +104,7 @@ namespace RP_Bot
             Id = user.Id;
             Username = user.Username;
             Discriminator = user.Discriminator;
+            Tag = "@" + Username + "#" + Discriminator;
             SocketUser = user;
             Console.WriteLine("User created: " + user.Username);
         }
@@ -115,6 +128,13 @@ namespace RP_Bot
             }
 
             return null;
+        }
+
+        public void SetActiveEvent(ulong channelId, Event curEvent) {
+            if (!activeEvents.TryAdd(channelId, curEvent))
+            {
+                activeEvents[channelId] = curEvent;
+            }
         }
     }
 
@@ -201,14 +221,8 @@ namespace RP_Bot
 
         public GuildChannel(SocketGuildChannel channel) : base(channel)
         {
-            Guild guild;
-            if (!Data.guilds.TryGetValue(channel.Guild.Id, out guild))
-            {
-                guild = new Guild(channel.Guild);
-                Data.guilds[guild.Id] = guild;
-                Guild = guild;
-                Console.WriteLine("Created channel: " + channel.Name);
-            }
+            Guild = Data.GetGuild(channel.Guild);
+            Console.WriteLine("Channel created: " + channel.Name);
         }
 
         public override bool IsAdmin(User user)
@@ -226,11 +240,12 @@ namespace RP_Bot
         public DateTimeOffset Idle { get; set; }
         public Ruleset Ruleset { get; set; }
         public User Dm { get; }
-        private HashSet<User> admins = new HashSet<User>();
+        private HashSet<ulong> admins = new HashSet<ulong>();
         public HashSet<Character> characters = new HashSet<Character>();
-        HashSet<User> users = new HashSet<User>();
+        public HashSet<ulong> users = new HashSet<ulong>();
         
         public int Round { get; internal set; }
+        private string log;
 
         public Event(User dm, Channel channel)
         {
@@ -241,92 +256,229 @@ namespace RP_Bot
             Ruleset = new AmentiaRuleset();
             Dm = dm;
             Round = 0;
+            log = "";
 
             channel.events[Id] = this;
+            dm.activeEvents.Add(channel.Id, this);
+            users.Add(dm.Id);
 
             Console.WriteLine("Created event: " + Id);
         }
 
         // Admins
-        public void AddAdmin(User user)
+        public string AddAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            admins.Add(user);
+            admins.Add(user.Id);
+
+            return Log($"{user.Tag} has been added as administrator of {Id}.");
         }
 
-        public void RemoveAdmin(User user)
+        public string RemoveAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            admins.Remove(user);
+            admins.Remove(user.Id);
+
+            return Log($"{user.Tag} is nolonger administrator of {Id}.");
         }
 
         public bool IsAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            return admins.Contains(user) || Dm.Equals(user) || Channel.IsAdmin(user);
+            return admins.Contains(user.Id) || Dm.Equals(user) || Channel.IsAdmin(user);
         }
 
         // Commands
 
         public string Start(User user)
         {
+            Idle = DateTimeOffset.Now;
+
             if (IsAdmin(user))
             {
                 if (Channel.ActiveEvent == null)
                 {
                     Round = 1;
                     Channel.ActiveEvent = this;
-                    return $"The event **{Id}** started!\nType **!event join {Id}** to join.";
+                    string msg = $"The event **{Id}** started!\n";
+                    foreach (ulong curUser in users)
+                    {
+                        msg += Data.users[curUser].SocketUser.Mention + " ";
+                    }
+
+                    return Log(msg);
                 } else
                 {
-                    return $"There is already an event running in this channel: {Channel.ActiveEvent.Id}.";
+                    return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Id}.");
                 }
             } else {
-                return "You do not have permission to start that event.";
+                return Log("You do not have permission to start that event.");
             }
         }
 
         public string Join(User user)
         {
-            users.Add(user);
-            user.activeEvents.Add(Channel.Id, this);
+            Idle = DateTimeOffset.Now;
 
-            return $"{user.Username} has joined {Id}.";
+            if (!users.Contains(user.Id))
+            {
+                users.Add(user.Id);
+                user.SetActiveEvent(Channel.Id, this);
+
+                return Log($"{user.Username} has joined {Id}.");
+            } else
+            {
+                return Log("You have already joined this event.");
+            }
         }
 
         public string Join(Character character, User user)
         {
+            Idle = DateTimeOffset.Now;
             if (HasStarted() && !Ruleset.JoinAfterStart && !IsAdmin(user))
             {
-                return "The event has already started, so you cannot join.";
+                return Log("The event has already started, so you cannot join.");
             }
 
-            AddCharacter(character);
+            AddCharacter(character, user);
             Join(user);
 
-            return $"{user.Username} has joined {Id}, with {character.Name}!";
+            return Log($"{user.Username} has joined {Id}, with {character.Name}!");
         }
 
-        public string AddCharacter(Character character)
+        public string AddCharacter(Character character, User user)
         {
-            Character joiner = character.CopyOf();
-            joiner.Maxhealth = Ruleset.CharMaxhealth;
-            joiner.Health = Ruleset.CharMaxhealth;
+            Idle = DateTimeOffset.Now;
+            if (HasStarted() && !Ruleset.JoinAfterStart && !IsAdmin(user))
+            {
+                return Log("The event has already started, so you cannot add a new character.");
+            }
 
-            if (Ruleset.WaitOnJoin)
+            Character joiner = character.CopyOf();
+
+            if (joiner.Npc)
+            {
+                joiner.Maxhealth = Ruleset.NpcMaxhealth;
+                joiner.Health = Ruleset.NpcMaxhealth;
+            } else
+            {
+                joiner.Maxhealth = Ruleset.CharMaxhealth;
+                joiner.Health = Ruleset.CharMaxhealth;
+            }
+
+            if (HasStarted() && Ruleset.WaitOnJoin)
                 joiner.Actionpoints = 0;
             else
                 joiner.Actionpoints = Ruleset.Actionpoints;
             characters.Add(joiner);
 
-            return $"{character.Name} was added to {Id}.";
+            return Log($"{character.Name} was added to {Id}.");
+        }
+
+        public string SetMaxhealth(Character character, int health)
+        {
+            Idle = DateTimeOffset.Now;
+            character.Maxhealth = health;
+
+            return Log($"{character.Name}'s max health is now {health}.");
+        }
+
+        public string SetHealth(Character character, int health)
+        {
+            Idle = DateTimeOffset.Now;
+            character.Health = health;
+
+            return Log($"{character.Name}'s health is now {health}.");
+        }
+
+        public string Attack(Character character, Character[] targets)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.Attack(character, targets);
+
+            return CheckRound(result);
+        }
+
+        public string Heal(Character character, Character[] targets)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.Heal(character, targets);
+
+            return CheckRound(result);
+        }
+
+        public string Ward(Character character, Character[] targets)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.Ward(character, targets);
+
+            return CheckRound(result);
         }
 
         // Utilities
 
-        public Boolean HasStarted()
+        public bool HasStarted()
         {
             return Round > 0;
+        }
+
+        public string Log(string msg)
+        {
+            log += "\n" + msg;
+            Console.WriteLine(msg);
+            return msg;
+        }
+
+        public string CheckRound(string result)
+        {
+            if (RemainingAP() != 0)
+                return result;
+
+            string status = result + $"\n\n\n-------------- Round {Round++} is done --------------";
+
+            status += "\nCharacters:";
+
+            foreach (Character character in characters)
+            {
+                character.UpdateWards();
+                if (character.Health > 0) character.Actionpoints = Ruleset.Actionpoints;
+                if (!character.Npc) status += "\n" + character.GetStatus();
+            }
+
+            status += "\n\nNPCs:";
+
+            foreach (Character character in characters)
+            {
+                if (character.Npc) status += "\n" + character.GetStatus();
+            }
+
+            return status;
+        }
+
+        public int RemainingAP()
+        {
+            int ap = 0;
+            foreach (Character character in characters)
+            {
+                if (!character.Npc) ap += character.Actionpoints;
+            }
+
+            return ap;
+        }
+
+        public Character GetCharacter(string alias)
+        {
+            alias = alias.ToLower();
+            foreach (Character character in characters)
+            {
+                foreach (string charAlias in character.aliases)
+                {
+                    if (alias.Equals(charAlias))
+                        return character;
+                }
+            }
+
+            return null;
         }
 
     }
@@ -347,7 +499,10 @@ namespace RP_Bot
         {
             this.Name = name;
             this.aliases.Add(name.ToLower());
-            this.aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
+            if (name.Contains(" "))
+            {
+                this.aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
+            }
             this.Health = health;
             this.Maxhealth = maxhealth;
             this.admins.Add(admin);
@@ -357,6 +512,7 @@ namespace RP_Bot
         {
             this.Name = name;
             this.aliases = new HashSet<string>(aliases);
+            this.Npc = npc;
             this.Health = health;
             this.Maxhealth = maxhealth;
             this.admins = new List<User>(admin);
@@ -395,6 +551,37 @@ namespace RP_Bot
             Actionpoints -= points;
         }
 
+        public string GetStatus()
+        {
+            string status = Name + ": " + Health;
+
+            if (GetWards() > 0) status += " + " + GetWards();
+
+            status += " / " + Maxhealth;
+
+            return status;
+        }
+
+        public int GetWards()
+        {
+            int shields = 0;
+
+            foreach (Ward ward in wards)
+            {
+                shields += ward.Shield;
+            }
+
+            return shields;
+        }
+
+        public void UpdateWards()
+        {
+            foreach (Ward ward in wards)
+            {
+                if (ward.Duration <= 0) wards.Remove(ward);
+                ward.NextRound();
+            }
+        }
     }
 
     // Wards
