@@ -367,6 +367,15 @@ namespace RP_Bot
         {
             string path = Id + ".txt";
             System.IO.File.WriteAllText(path, log);
+            if (!Channel.events.ContainsKey(Id))
+            {
+                Console.WriteLine("Missing: " + Id);
+
+                foreach (string key in Channel.events.Keys)
+                {
+                    Console.WriteLine(key);
+                }
+            }
             Channel.events.Remove(Id);
 
             foreach (ulong curUser in users)

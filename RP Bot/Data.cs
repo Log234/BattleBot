@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Timers;
 
 namespace RP_Bot
 {
@@ -121,9 +122,9 @@ namespace RP_Bot
         public static void Update()
         {
             Storage storage = GetStorage;
-            foreach (KeyValuePair<ulong, Channel> channel in storage.channels)
+            foreach (Channel channel in storage.channels.Values)
             {
-                if (channel.Value.ActiveEvent != null)
+                if (channel.ActiveEvent != null)
                 {
 
                 }
@@ -149,6 +150,28 @@ namespace RP_Bot
             {
                 var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
                 storage =  (Storage)binaryFormatter.Deserialize(stream);
+            }
+        }
+
+        // Cleanup
+        public static void OnCleanup(Object source, ElapsedEventArgs e)
+        {
+            foreach (KeyValuePair<ulong, Channel> channel in storage.channels)
+            {
+                foreach (KeyValuePair<String, Event> eventPair in channel.Value.events)
+                {
+                    if ((DateTime.Now - eventPair.Value.Idle).TotalDays > Cleanup.eventTimeout)
+                    {
+                        if (channel.Value.events.Count == 1)
+                        {
+                            storage.channels.Remove(channel.Key);
+                        }
+                        else
+                        {
+                            channel.Value.events.Remove(eventPair.Key);
+                        }
+                    }
+                }
             }
         }
     }
