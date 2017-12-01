@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace RP_Bot
+namespace BattleBot
 {
+    [Serializable]
     abstract class Ruleset
     {
-        Random rnd = new Random();
-
         public string Name { get; protected set; }
         public string Description { get; protected set; }
         public bool JoinAfterStart { get; protected set; }   // Whether characters can join after the event has started
@@ -35,9 +34,10 @@ namespace RP_Bot
         abstract public string Ward(Character character, Character[] targets);
 
     }
+
+    [Serializable]
     class AmentiaRuleset : Ruleset
     {
-        Random rnd = new Random();
 
         public AmentiaRuleset()
         {
@@ -64,6 +64,8 @@ namespace RP_Bot
 
         public override string Attack(Character character, Character[] targets)
         {
+            Random rnd = new Random();
+
             if (character.Actionpoints < 2)
             {
                 return "Insufficient action points.";
@@ -124,6 +126,8 @@ namespace RP_Bot
 
         public override string Heal(Character character, Character[] targets)
         {
+            Random rnd = new Random();
+
             int requiredPoints;
             if (targets.Length > 1)
             {
@@ -169,6 +173,8 @@ namespace RP_Bot
 
         public override string Ward(Character character, Character[] targets)
         {
+            Random rnd = new Random();
+
             int requiredPoints;
             if (targets.Length > 1)
             {

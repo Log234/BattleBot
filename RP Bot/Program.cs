@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RP_Bot
+namespace BattleBot
 {
     using System;
     using System.Threading.Tasks;
@@ -22,6 +22,7 @@ namespace RP_Bot
         public async Task StartAsync()
         {
             Data.Load();
+            AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
 
             _cleanup = new Cleanup();
             _client = new DiscordSocketClient(new DiscordSocketConfig
@@ -32,7 +33,7 @@ namespace RP_Bot
             _client.Log += Log;
             _commands = new CommandService();
             _commands.Log += Log;
-            
+
             string token = System.IO.File.ReadAllText(@"C:\Secrets\BattleBot.txt");
 
             _services = new ServiceCollection()
@@ -45,8 +46,19 @@ namespace RP_Bot
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
+            Data.client = _client;
+            Data.client.Ready += Data.OnReconnect;
+
+
             await Task.Delay(-1);
         }
+
+        private async void CurrentDomain_ProcessExit(object sender, EventArgs e)
+        {
+            await Data.MessageActiveDMs("Woop! :confused:\nSomething unexpected is happening over here, I will be back ASAP.");
+            Data.Exit();
+        }
+
         private Task Log(LogMessage message)
         {
             Console.WriteLine(message.ToString());

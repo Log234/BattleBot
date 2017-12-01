@@ -4,13 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 
-namespace RP_Bot
+namespace BattleBot
 {
-    static class Data
+    class Data
     {
+        public static DiscordSocketClient client;
 
+        [Serializable]
         class Storage
         {
             public Dictionary<ulong, User> users = new Dictionary<ulong, User>();
@@ -110,31 +114,62 @@ namespace RP_Bot
             return curEvent;
         }
 
+        // Message all active event DMs
+        public static async Task MessageActiveDMs(string msg)
+        {
+            SocketUser log = client.GetUser(174426714120781824);
+            Discord.IDMChannel dm = await log.GetOrCreateDMChannelAsync();
+            await dm.SendMessageAsync(msg);
+            Console.WriteLine(msg);
+
+            Storage storage = GetStorage;
+            foreach (Channel channel in storage.channels.Values)
+            {
+                if (channel.ActiveEvent != null && (DateTimeOffset.Now - channel.ActiveEvent.Idle).TotalMinutes < 10)
+                {
+                    SocketUser user = client.GetUser(dm.Id);
+                    SocketChannel socketChannel = client.GetChannel(channel.Id);
+                    string mention = user.Mention;
+                    (socketChannel as SocketTextChannel)?.SendMessageAsync(mention + "\n" + msg);
+                }
+            }
+        }
+
         // Save and exit
         public static void Exit()
         {
+            Console.WriteLine("Saving");
             Save();
+            Console.WriteLine("Shutting down");
             Environment.Exit(0);
 
         }
 
         // Prepare for update
-        public static void Update()
+        public static async Task Update()
         {
-            Storage storage = GetStorage;
-            foreach (Channel channel in storage.channels.Values)
-            {
-                if (channel.ActiveEvent != null)
-                {
-
-                }
-            }
+            await MessageActiveDMs("I will be taken offline in 15 minutes. The state of your active event will be saved, but it may take a few minutes before I come back.");
+            await (Task.Delay(600000));
+            await MessageActiveDMs("I will be taken offline in 5 minutes.");
+            await (Task.Delay(240000));
+            await MessageActiveDMs("I will be taken offline in 1 minute.");
+            await (Task.Delay(60000));
+            await MessageActiveDMs("Going offline, see you soon! :heart:");
+            Exit();
         }
 
         private static void Save()
         {
+            Console.WriteLine("Saving Data.dat");
             Storage storage = GetStorage;
             using (Stream stream = File.Open("Data.dat", FileMode.Create))
+            {
+                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                binaryFormatter.Serialize(stream, storage);
+            }
+
+            Console.WriteLine("Saving backup");
+            using (Stream stream = File.Open($"Backup/Data-{DateTimeOffset.Now}.dat", FileMode.Create))
             {
                 var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
                 binaryFormatter.Serialize(stream, storage);
@@ -144,8 +179,10 @@ namespace RP_Bot
 
         public static void Load()
         {
+            Console.WriteLine("Could not find Data.dat");
             if (!File.Exists("Data.dat")) return;
 
+            Console.WriteLine("Loading Data.dat");
             using (Stream stream = File.Open("Data.dat", FileMode.Open))
             {
                 var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
@@ -174,15 +211,21 @@ namespace RP_Bot
                 }
             }
         }
+
+        // Reconnect
+        public static async Task OnReconnect()
+        {
+            await Data.MessageActiveDMs("Beep Boop!\nI'm back! :smile:");
+        }
     }
 
+    [Serializable]
     class User
     {
         public ulong Id { get; }
         public string Tag { get; }
         public string Username { get; }
         public string Discriminator { get; }
-        public SocketUser SocketUser { get; }
         public DateTimeOffset Idle { get; set; }
         public HashSet<Character> characters = new HashSet<Character>();
         public Dictionary<ulong, Event> activeEvents = new Dictionary<ulong, Event>();
@@ -194,7 +237,6 @@ namespace RP_Bot
             Username = user.Username;
             Discriminator = user.Discriminator;
             Tag = "@" + Username + "#" + Discriminator;
-            SocketUser = user;
             Console.WriteLine("User created: " + user.Username);
         }
 
@@ -228,10 +270,10 @@ namespace RP_Bot
         }
     }
 
+    [Serializable]
     class Guild
     {
         public ulong Id { get; }
-        public SocketGuild SocketGuild { get; }
         public DateTimeOffset Idle { get; set; }
         private HashSet<User> admins = new HashSet<User>();
         private Dictionary<ulong, Channel> channels = new Dictionary<ulong, Channel>();
@@ -239,8 +281,7 @@ namespace RP_Bot
         public Guild(SocketGuild guild)
         {
             Id = guild.Id;
-            SocketGuild = guild;
-            Console.WriteLine("Guild created: " + SocketGuild.Name);
+            Console.WriteLine("Guild created: " + guild.Name);
         }
 
         // Admins
@@ -264,10 +305,10 @@ namespace RP_Bot
 
     }
 
+    [Serializable]
     class Channel
     {
         public ulong Id { get; }
-        public SocketChannel SocketChannel { get; }
         public DateTimeOffset Idle { get; set; }
         protected HashSet<User> admins = new HashSet<User>();
         public Dictionary<String, Event> events = new Dictionary<string, Event>();
@@ -276,7 +317,6 @@ namespace RP_Bot
         public Channel(SocketChannel channel)
         {
             Id = channel.Id;
-            SocketChannel = channel;
             Console.WriteLine("Channel created: " + Id);
         }
 
@@ -305,6 +345,7 @@ namespace RP_Bot
         }
     }
 
+    [Serializable]
     class GuildChannel : Channel
     {
         public Guild Guild { get; }
@@ -323,6 +364,7 @@ namespace RP_Bot
     }
 
     // Teams
+    [Serializable]
     class Team
     {
         public string Name { get; }
@@ -363,6 +405,7 @@ namespace RP_Bot
     }
 
     // Characters
+    [Serializable]
     class Character
     {
         public string Name { get; }
@@ -464,6 +507,7 @@ namespace RP_Bot
     }
 
     // Wards
+    [Serializable]
     class Ward
     {
         public int Shield { get; internal set; }
@@ -489,6 +533,7 @@ namespace RP_Bot
     }
 
     // DoTs
+    [Serializable]
     class Dot
     {
         public int Damage { get; }

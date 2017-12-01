@@ -1,12 +1,15 @@
-﻿using System;
+﻿using Discord.WebSocket;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace RP_Bot
+namespace BattleBot
 {
+    [Serializable]
     class Event
     {
         public String Id { get; }
+        public String Name { get; internal set; }
         public Channel Channel { get; }
         public DateTimeOffset Created { get; }
         public DateTimeOffset Idle { get; set; }
@@ -20,9 +23,10 @@ namespace RP_Bot
         public int Round { get; internal set; }
         private string log;
 
-        public Event(User dm, Channel channel)
+        public Event(User dm, Channel channel, string name)
         {
             Id = channel.GetEventName(dm);
+            Name = name;
             Channel = channel;
             Created = DateTimeOffset.Now;
             Idle = DateTimeOffset.Now;
@@ -35,7 +39,7 @@ namespace RP_Bot
             dm.activeEvents.Add(channel.Id, this);
             users.Add(dm.Id);
 
-            Console.WriteLine("Created event: " + Id);
+            Console.WriteLine("Created event: " + Name + " (" + Id + ")");
         }
 
         // Admins
@@ -44,7 +48,7 @@ namespace RP_Bot
             Idle = DateTimeOffset.Now;
             admins.Add(user.Id);
 
-            return Log($"{user.Tag} has been added as administrator of {Id}.");
+            return Log($"{user.Tag} has been added as administrator of {Name}.");
         }
 
         public string RemoveAdmin(User user)
@@ -52,7 +56,7 @@ namespace RP_Bot
             Idle = DateTimeOffset.Now;
             admins.Remove(user.Id);
 
-            return Log($"{user.Tag} is nolonger administrator of {Id}.");
+            return Log($"{user.Tag} is nolonger administrator of {Name}.");
         }
 
         public bool IsAdmin(User user)
@@ -72,17 +76,18 @@ namespace RP_Bot
                 {
                     Round = 1;
                     Channel.ActiveEvent = this;
-                    string msg = $"The event **{Id}** started!\n";
+                    string msg = $"The event **{Name}** started!\n";
                     foreach (ulong curUser in users)
                     {
-                        msg += Data.GetUser(curUser).SocketUser.Mention + " ";
+                        SocketUser socketUser = Data.client.GetUser(Data.GetUser(curUser).Id);
+                        msg += socketUser.Mention + " ";
                     }
 
                     return Log(msg);
                 }
                 else
                 {
-                    return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Id}.");
+                    return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Name} ({Channel.ActiveEvent.Id}).\nDM: {Channel.ActiveEvent.Dm.Username}");
                 }
             }
             else
@@ -100,7 +105,7 @@ namespace RP_Bot
                 users.Add(user.Id);
                 user.SetActiveEvent(Channel.Id, this);
 
-                return Log($"{user.Username} has joined {Id}.");
+                return Log($"{user.Username} has joined {Name}.");
             }
             else
             {
@@ -119,7 +124,7 @@ namespace RP_Bot
             AddCharacter(character, user);
             Join(user);
 
-            return Log($"{user.Username} has joined {Id}, with {character.Name}!");
+            return Log($"{user.Username} has joined {Name}, with {character.Name}!");
         }
 
         public string AddCharacter(Character character, User user)
@@ -149,19 +154,30 @@ namespace RP_Bot
                 joiner.Actionpoints = Ruleset.Actionpoints;
             characters.Add(joiner);
 
-            return Log($"{character.Name} was added to {Id}.");
+            return Log($"{character.Name} was added to {Name}.");
         }
 
         public string RemoveCharacter(Character character)
         {
             Idle = DateTimeOffset.Now;
 
+            foreach (Team team in teams)
+            {
+                foreach (Character curChar in team.members)
+                {
+                    if (curChar.Name.Equals(character.Name))
+                    {
+                        team.members.Remove(curChar);
+                    }
+                }
+            }
+
             foreach (Character curChar in characters)
             {
                 if (curChar.Name.Equals(character.Name))
                 {
                     characters.Remove(curChar);
-                    return Log($"{character.Name} was removed from {Id}.");
+                    return Log($"{character.Name} was removed from {Name}.");
                 }
             }
 
@@ -175,7 +191,7 @@ namespace RP_Bot
             Team team = new Team(name);
             teams.Add(team);
 
-            return Log($"The team {name} was added to {Id}.");
+            return Log($"The team {name} was added to {Name}.");
         }
 
         public string RemoveTeam(Team team)
@@ -187,7 +203,7 @@ namespace RP_Bot
                 if (curTeam.Name.Equals(team.Name))
                 {
                     teams.Remove(curTeam);
-                    return Log($"{team.Name} was removed from {Id}.");
+                    return Log($"{team.Name} was removed from {Name}.");
                 }
             }
 

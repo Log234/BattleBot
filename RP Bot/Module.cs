@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace RP_Bot
+namespace BattleBot
 {
     using Discord;
     using Discord.Commands;
@@ -15,11 +15,11 @@ namespace RP_Bot
         // Create an event
         [Command("create")]
         [Summary("Creates a new RP event.")]
-        public async Task CreateEvent()
+        public async Task CreateEvent([Remainder] string name)
         {
             User dm = Data.GetUser(Context.Message.Author);
             Channel channel = Data.GetChannel(Context.Message.Channel as SocketChannel);
-            Event curEvent = new Event(dm, channel);
+            Event curEvent = new Event(dm, channel, name);
 
             await ReplyAsync($"New event **{curEvent.Id}** created!\nType **!event join {curEvent.Id}** to join.");
         }
@@ -496,6 +496,47 @@ namespace RP_Bot
         public async Task Hug()
         {
             await ReplyAsync($"-hugs {Context.Message.Author.Mention}- :heart:");
+        }
+
+        // Feedback
+        [Command("feedback")]
+        [Summary("Send feedback.")]
+        public async Task Feedback([Remainder] string feedback)
+        {
+            string author = Context.Message.Author.Mention;
+            await ReplyAsync($"Thank you very much for your feed back, {author}! :heart:");
+            SocketUser log = Context.Client.GetUser(174426714120781824);
+            await (log.SendMessageAsync($"From: {author}\n" + feedback));
+        }
+
+        // Immediate shutdown
+        [Command("shutdown")]
+        [Summary("Stops the bot immediately.")]
+        public async Task Shutdown()
+        {
+            if (Context.Message.Author.Id != 174426714120781824)
+            {
+                await ReplyAsync("You are not permitted to use this command.");
+                return;
+            }
+            SocketUser log = Context.Client.GetUser(174426714120781824);
+            await (log.SendMessageAsync("Shutting down."));
+            Data.Exit();
+        }
+
+        // Delayed shutdown
+        [Command("update")]
+        [Summary("Stops the bot after 15 minutes.")]
+        public async Task Update()
+        {
+            if (Context.Message.Author.Id != 174426714120781824)
+            {
+                await ReplyAsync("You are not permitted to use this command.");
+                return;
+            }
+            SocketUser log = Context.Client.GetUser(174426714120781824);
+            await (log.SendMessageAsync("Shutting down."));
+            await Data.Update();
         }
     }
 }
