@@ -29,5 +29,18 @@ namespace BattleBot
 
             return result;
         }
+
+        // Returns the current date-time formated for filenames
+        public static string GetDateTime()
+        {
+            string datetime = "";
+            datetime += DateTime.Now.Year + "-";
+            datetime += DateTime.Now.Month + "-";
+            datetime += DateTime.Now.Day + " ";
+            datetime += DateTime.Now.Hour + "-";
+            datetime += DateTime.Now.Minute;
+
+            return datetime;
+        }
     }
 }

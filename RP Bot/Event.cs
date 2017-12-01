@@ -96,6 +96,29 @@ namespace BattleBot
             }
         }
 
+        public string Status()
+        {
+            string status = $"-------------- {Name} ({Id}) --------------";
+            status += $"\nStarted: {Round > 0}";
+            status += "\nDM: " + Dm.Username;
+            status += "\nAdmins:";
+            foreach (ulong userID in admins)
+            {
+                User user = Data.GetUser(userID);
+                status += "\n" + user.Username;
+            }
+            status += "\n\nUsers:";
+            foreach (ulong userID in users)
+            {
+                User user = Data.GetUser(userID);
+                status += "\n" + user.Username;
+            }
+
+            status += "\n\nCharacters:" + RoundStatus();
+
+            return status;
+        }
+
         public string Join(User user)
         {
             Idle = DateTimeOffset.Now;
@@ -301,7 +324,7 @@ namespace BattleBot
                 if (character.Health > 0) character.Actionpoints = Ruleset.Actionpoints;
             }
 
-            string status = result + RoundStatus();
+            string status = result + $"\n\n\n-------------- Round {Round++} is done --------------" + RoundStatus();
 
             return status;
         }
@@ -343,7 +366,7 @@ namespace BattleBot
 
         public string RoundStatus()
         {
-            string status = $"\n\n\n-------------- Round {Round++} is done --------------";
+            string status = "";
 
             if (teams.Count > 0)
             {

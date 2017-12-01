@@ -13,6 +13,7 @@ namespace BattleBot
     class Data
     {
         public static DiscordSocketClient client;
+        private static Storage storage = new Storage();
 
         [Serializable]
         class Storage
@@ -21,8 +22,6 @@ namespace BattleBot
             public Dictionary<ulong, Guild> guilds = new Dictionary<ulong, Guild>();
             public Dictionary<ulong, Channel> channels = new Dictionary<ulong, Channel>();
         }
-
-        private static Storage storage = new Storage();
 
         static Storage GetStorage
         {
@@ -39,6 +38,22 @@ namespace BattleBot
             if (!channel.events.TryGetValue(eventId, out Event curEvent))
             {
                 return null;
+            }
+
+            return curEvent;
+        }
+
+        // Get event based on context
+        public static Event GetEvent(SocketCommandContext Context, string eventId = "Active")
+        {
+            Event curEvent;
+            if (eventId.Equals("Active"))
+            {
+                curEvent = storage.users[Context.Message.Author.Id]?.activeEvents[Context.Channel.Id];
+            }
+            else
+            {
+                curEvent = storage.channels[Context.Channel.Id]?.events[eventId];
             }
 
             return curEvent;
@@ -98,22 +113,6 @@ namespace BattleBot
             return curUser;
         }
 
-        // Get event based on context
-        public static Event GetEvent(SocketCommandContext Context, string eventId = "Active")
-        {
-            Event curEvent;
-            if (eventId.Equals("Active"))
-            {
-                curEvent = storage.users[Context.Message.Author.Id]?.activeEvents[Context.Channel.Id];
-            }
-            else
-            {
-                curEvent = storage.channels[Context.Channel.Id]?.events[eventId];
-            }
-
-            return curEvent;
-        }
-
         // Message all active event DMs
         public static async Task MessageActiveDMs(string msg)
         {
@@ -140,6 +139,7 @@ namespace BattleBot
         {
             Console.WriteLine("Saving");
             Save();
+            Program.exit = true;
             Console.WriteLine("Shutting down");
             Environment.Exit(0);
 
@@ -169,7 +169,8 @@ namespace BattleBot
             }
 
             Console.WriteLine("Saving backup");
-            using (Stream stream = File.Open($"Backup/Data-{DateTimeOffset.Now}.dat", FileMode.Create))
+            Directory.CreateDirectory("Backup");
+            using (Stream stream = File.Open($"Backup/Data-{Utilities.GetDateTime()}.dat", FileMode.Create))
             {
                 var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
                 binaryFormatter.Serialize(stream, storage);
@@ -179,8 +180,11 @@ namespace BattleBot
 
         public static void Load()
         {
-            Console.WriteLine("Could not find Data.dat");
-            if (!File.Exists("Data.dat")) return;
+            if (!File.Exists("Data.dat"))
+            {
+                Console.WriteLine("Could not find Data.dat");
+                return;
+            }
 
             Console.WriteLine("Loading Data.dat");
             using (Stream stream = File.Open("Data.dat", FileMode.Open))

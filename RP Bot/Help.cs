@@ -47,6 +47,15 @@ namespace BattleBot
                 await channel.SendMessageAsync("**!event start <event ID>** starts an event and sets it active for you.\nAfter you have added all the characters and prepared the event, use this command to start the combat.");
             }
 
+            [Command("status")]
+            [Summary("Event status help")]
+            public async Task Status()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync("**!event status [event ID]** I'll read out some information about the event, such as the name, whether it has started and who have joined it. :books:");
+            }
+
+
             [Command("finish")]
             [Summary("Event finish help")]
             public async Task Finish()

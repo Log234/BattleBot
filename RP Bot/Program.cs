@@ -12,6 +12,7 @@ namespace BattleBot
 
     public class Program
     {
+        public static bool exit = false;
         private Cleanup _cleanup;
         private CommandService _commands;
         private DiscordSocketClient _client;
@@ -55,8 +56,11 @@ namespace BattleBot
 
         private async void CurrentDomain_ProcessExit(object sender, EventArgs e)
         {
-            await Data.MessageActiveDMs("Woop! :confused:\nSomething unexpected is happening over here, I will be back ASAP.");
-            Data.Exit();
+            if (!exit)
+            {
+                await Data.MessageActiveDMs("Woop! :confused:\nSomething unexpected is happening over here, I will be back ASAP.");
+                Data.Exit();
+            }
         }
 
         private Task Log(LogMessage message)

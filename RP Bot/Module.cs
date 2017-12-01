@@ -28,10 +28,9 @@ namespace BattleBot
         // Start an event
         [Command("start")]
         [Summary("Starts an existing RP event.")]
-        public async Task StartEvent(string eventId = "Active")
+        public async Task StartEvent(string eventId)
         {
-            ulong channelId = Context.Message.Channel.Id;
-            Event curEvent = Data.GetEvent(channelId, eventId);
+            Event curEvent = Data.GetEvent(Context, eventId);
             if (curEvent == null)
             {
                 await ReplyAsync($"Could not find any event in this channel with that ID.");
@@ -41,13 +40,29 @@ namespace BattleBot
             await ReplyAsync(curEvent.Start(Data.GetUser(Context.Message.Author)));
         }
 
+        // Event status
+        [Command("status")]
+        [Summary("Prints the status of an event.")]
+        public async Task StatusEvent(string eventId = "Active")
+        {
+            ulong channelId = Context.Message.Channel.Id;
+            Event curEvent = Data.GetEvent(Context, eventId);
+            if (curEvent == null)
+            {
+                await ReplyAsync($"Could not find any event in this channel with that ID.");
+                return;
+            }
+
+            await ReplyAsync(curEvent.Status());
+        }
+
         // Start an event
         [Command("finish")]
         [Summary("Finishes an existing RP event.")]
-        public async Task FinishEvent(string eventId = "Active")
+        public async Task FinishEvent(string eventId)
         {
             ulong channelId = Context.Message.Channel.Id;
-            Event curEvent = Data.GetEvent(channelId, eventId);
+            Event curEvent = Data.GetEvent(Context, eventId);
             if (curEvent == null)
             {
                 await ReplyAsync($"Could not find any event in this channel with that ID.");
@@ -71,7 +86,7 @@ namespace BattleBot
         [Summary("Join an event without a character.")]
         public async Task JoinEvent(string eventId)
         {
-            Event curEvent = Data.GetEvent(Context.Message.Channel.Id, eventId);
+            Event curEvent = Data.GetEvent(Context, eventId);
             if (curEvent == null)
             {
                 await ReplyAsync("Could not find that event.");
@@ -88,7 +103,7 @@ namespace BattleBot
         {
             User user = Data.GetUser(Context.Message.Author);
 
-            Event curEvent = Data.GetEvent(Context.Message.Channel.Id, eventId);
+            Event curEvent = Data.GetEvent(Context, eventId);
             if (curEvent == null)
             {
                 await ReplyAsync("Could not find that event.");
