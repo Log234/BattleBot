@@ -146,15 +146,15 @@ namespace BattleBot
         }
 
         // Prepare for update
-        public static async Task Update()
+        public static void Update()
         {
-            await MessageActiveDMs("I will be taken offline in 15 minutes. The state of your active event will be saved, but it may take a few minutes before I come back.");
-            await (Task.Delay(600000));
-            await MessageActiveDMs("I will be taken offline in 5 minutes.");
-            await (Task.Delay(240000));
-            await MessageActiveDMs("I will be taken offline in 1 minute.");
-            await (Task.Delay(60000));
-            await MessageActiveDMs("Going offline, see you soon! :heart:");
+            MessageActiveDMs("I will be taken offline in 15 minutes. The state of your active event will be saved, but it may take a few minutes before I come back.");
+            Thread.Sleep(600000);
+            MessageActiveDMs("I will be taken offline in 5 minutes.");
+            Thread.Sleep(240000);
+            MessageActiveDMs("I will be taken offline in 1 minute.");
+            Thread.Sleep(60000);
+            MessageActiveDMs("Going offline, see you soon! :heart:");
             Exit();
         }
 

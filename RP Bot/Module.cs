@@ -7,6 +7,7 @@ namespace BattleBot
     using Discord;
     using Discord.Commands;
     using Discord.WebSocket;
+    using System.Threading;
     using System.Threading.Tasks;
 
     [Group("event")]
@@ -21,7 +22,7 @@ namespace BattleBot
             Channel channel = Data.GetChannel(Context.Message.Channel as SocketChannel);
             Event curEvent = new Event(dm, channel, name);
 
-            await ReplyAsync($"New event **{curEvent.Id}** created!\nType **!event join {curEvent.Id}** to join.");
+            await ReplyAsync($"New event **{curEvent.Name} ({curEvent.Id})** created!\nType **!event join {curEvent.Id}** to join.");
         }
 
 
@@ -551,7 +552,7 @@ namespace BattleBot
             }
             SocketUser log = Context.Client.GetUser(174426714120781824);
             await (log.SendMessageAsync("Shutting down."));
-            await Data.Update();
+            new Thread(Data.Update).Start();
         }
     }
 }
