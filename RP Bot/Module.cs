@@ -10,6 +10,18 @@ namespace BattleBot
     using System.Threading;
     using System.Threading.Tasks;
 
+    [Group("channel")]
+    public class ChannelModule : ModuleBase<SocketCommandContext>
+    {
+        // Get channel status
+        [Command("status")]
+        [Summary("Prints the status of a channel.")]
+        public async Task StatusChannel()
+        {
+            await ReplyAsync(Data.GetChannel(Context.Message.Channel as SocketChannel).GetStatus());
+        }
+    }
+
     [Group("event")]
     public class EventModule : ModuleBase<SocketCommandContext>
     {
@@ -535,8 +547,7 @@ namespace BattleBot
                 await ReplyAsync("You are not permitted to use this command.");
                 return;
             }
-            SocketUser log = Context.Client.GetUser(174426714120781824);
-            await (log.SendMessageAsync("Shutting down."));
+            await ReplyAsync("Shutting down.");
             Data.Exit();
         }
 
@@ -550,8 +561,7 @@ namespace BattleBot
                 await ReplyAsync("You are not permitted to use this command.");
                 return;
             }
-            SocketUser log = Context.Client.GetUser(174426714120781824);
-            await (log.SendMessageAsync("Shutting down."));
+            await ReplyAsync("Starting shutdown sequence.");
             new Thread(Data.Update).Start();
         }
     }

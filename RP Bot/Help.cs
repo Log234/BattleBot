@@ -16,9 +16,30 @@ namespace BattleBot
         public async Task Help()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("Type **!help <command>** to learn more about the different commands:\nfeedback\nevent\nattack\nheal\nward");
+            await channel.SendMessageAsync("Type **!help <command>** to learn more about the different commands:\nfeedback\nchannel\nevent\nattack\nheal\nward");
         }
 
+        // Channel
+        [Group("channel")]
+        public class ChannelModule : ModuleBase<SocketCommandContext>
+        {
+            [Command]
+            [Summary("Channel help")]
+            public async Task Help()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync("**!channel <command>** allows you to moderate channels with these commands:\nevent status");
+            }
+
+            [Command("status")]
+            [Summary("Channel status help")]
+            public async Task Status()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync("**!channel status [event ID]** I'll read out some information about the channel, such as the name, if there is an ongoing event, and what events are in it. :books:");
+            }
+
+        }
         // Event
         [Group("event")]
         public class EventModule : ModuleBase<SocketCommandContext>

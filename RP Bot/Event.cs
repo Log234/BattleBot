@@ -46,7 +46,17 @@ namespace BattleBot
         public string AddAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
+            if (admins.Contains(user.Id))
+            {
+                return Log($"{user.Tag} is already an administrator of {Name}.");
+            }
+
             admins.Add(user.Id);
+
+            if (!users.Contains(user.Id))
+            {
+                users.Add(user.Id);
+            }
 
             return Log($"{user.Tag} has been added as administrator of {Name}.");
         }
@@ -54,8 +64,12 @@ namespace BattleBot
         public string RemoveAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            admins.Remove(user.Id);
+            if (!admins.Contains(user.Id))
+            {
+                return Log($"{user.Tag} is not an administrator of {Name}.");
+            }
 
+            admins.Remove(user.Id);
             return Log($"{user.Tag} is nolonger administrator of {Name}.");
         }
 
@@ -246,6 +260,7 @@ namespace BattleBot
                     curTeam.members.Remove(character);
                 }
             }
+
             result += $"{character.Name} was added to {team.Name}.\n";
             team.members.Add(character);
 
@@ -420,7 +435,7 @@ namespace BattleBot
             foreach (ulong curUser in users)
             {
                 User user = Data.GetUser(curUser);
-                if (user?.activeEvents[Channel.Id]?.Id == Id)
+                if (user != null && user.activeEvents.TryGetValue(Channel.Id, out Event curEvent) && curEvent.Id == Id)
                 {
                     user.activeEvents.Remove(Channel.Id);
                 }

@@ -53,7 +53,12 @@ namespace BattleBot
             }
             else
             {
-                curEvent = storage.channels[Context.Channel.Id]?.events[eventId];
+                if (storage.channels.TryGetValue(Context.Channel.Id, out Channel channel) && channel.events.TryGetValue(eventId, out Event newEvent))
+                {
+                    curEvent = newEvent;
+                }
+                else
+                    return null;
             }
 
             return curEvent;
@@ -180,6 +185,7 @@ namespace BattleBot
 
         public static void Load()
         {
+
             if (!File.Exists("Data.dat"))
             {
                 Console.WriteLine("Could not find Data.dat");
@@ -197,6 +203,9 @@ namespace BattleBot
         // Cleanup
         public static void OnCleanup(Object source, ElapsedEventArgs e)
         {
+            List<ulong> remChannel = new List<ulong>();
+            Dictionary<Channel, string> remEvent = new Dictionary<Channel, string>();
+
             foreach (KeyValuePair<ulong, Channel> channel in storage.channels)
             {
                 foreach (KeyValuePair<String, Event> eventPair in channel.Value.events)
@@ -205,14 +214,24 @@ namespace BattleBot
                     {
                         if (channel.Value.events.Count == 1)
                         {
-                            storage.channels.Remove(channel.Key);
+                            remChannel.Add(channel.Key);
                         }
                         else
                         {
-                            channel.Value.events.Remove(eventPair.Key);
+                            remEvent.Add(channel.Value, eventPair.Key);
                         }
                     }
                 }
+            }
+
+            foreach (ulong channel in remChannel)
+            {
+                storage.channels.Remove(channel);
+            }
+
+            foreach (KeyValuePair<Channel, string> curEvent in remEvent)
+            {
+                curEvent.Key.events.Remove(curEvent.Value);
             }
         }
 
@@ -313,6 +332,7 @@ namespace BattleBot
     class Channel
     {
         public ulong Id { get; }
+        public string Name { get; }
         public DateTimeOffset Idle { get; set; }
         protected HashSet<User> admins = new HashSet<User>();
         public Dictionary<String, Event> events = new Dictionary<string, Event>();
@@ -321,7 +341,19 @@ namespace BattleBot
         public Channel(SocketChannel channel)
         {
             Id = channel.Id;
-            Console.WriteLine("Channel created: " + Id);
+
+            if (channel is SocketGuildChannel)
+            {
+                Name = (channel as SocketGuildChannel).Name;
+            } else if (channel is SocketDMChannel)
+            {
+                Name = (channel as SocketDMChannel).Recipient.Username;
+            } else if (channel is SocketGroupChannel)
+            {
+                Name = (channel as SocketGroupChannel).Name;
+            }
+
+            Console.WriteLine("Channel created: " + Name);
         }
 
         public string GetEventName(User dm)
@@ -347,6 +379,25 @@ namespace BattleBot
             Idle = DateTimeOffset.Now;
             return admins.Contains(user);
         }
+
+        //
+
+        public string GetStatus()
+        {
+            string status = $"-------------- {Name} --------------";
+            if (ActiveEvent != null)
+            {
+                status += $"\nActive event: {ActiveEvent.Name} ({ActiveEvent.Id})\n";
+            }
+            status += "\nEvents:";
+            foreach (KeyValuePair<string, Event> curEvent in events)
+            {
+                status += $"\n{curEvent.Value.Name} ({curEvent.Key})";
+            }
+
+
+            return status;
+        }
     }
 
     [Serializable]
@@ -357,7 +408,6 @@ namespace BattleBot
         public GuildChannel(SocketGuildChannel channel) : base(channel)
         {
             Guild = Data.GetGuild(channel.Guild);
-            Console.WriteLine("Channel created: " + channel.Name);
         }
 
         public override bool IsAdmin(User user)
@@ -451,12 +501,18 @@ namespace BattleBot
 
         public void TakeDamage(int amount)
         {
+            List<Ward> remove = new List<Ward>();
             for (int i = 0; i < wards.Count; i++)
             {
                 amount = wards[i].TakeDamage(amount);
-                if (wards[i].Shield == 0) wards.RemoveAt(i);
-                if (amount == 0) return;
+                if (wards[i].Shield == 0) remove.Add(wards[i]);
             }
+
+            foreach (Ward ward in remove)
+            {
+                wards.Remove(ward);
+            }
+
             Health -= amount;
             if (Health < 0) Health = 0;
         }
@@ -502,10 +558,16 @@ namespace BattleBot
 
         public void UpdateWards()
         {
+            List<Ward> remove = new List<Ward>();
             foreach (Ward ward in wards)
             {
-                if (ward.Duration <= 0) wards.Remove(ward);
+                if (ward.Duration <= 0) remove.Add(ward);
                 ward.NextRound();
+            }
+
+            foreach (Ward ward in remove)
+            {
+                wards.Remove(ward);
             }
         }
     }
