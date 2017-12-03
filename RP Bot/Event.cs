@@ -20,7 +20,9 @@ namespace BattleBot
         public HashSet<Character> characters = new HashSet<Character>();
         public HashSet<ulong> users = new HashSet<ulong>();
 
+        private Dictionary<string, int> duplicates = new Dictionary<string, int>();
         public int Round { get; internal set; }
+        public bool Done { get; internal set; }
         private string log;
 
         public Event(User dm, Channel channel, string name)
@@ -33,6 +35,7 @@ namespace BattleBot
             Ruleset = new AmentiaRuleset();
             Dm = dm;
             Round = 0;
+            Done = false;
             log = "";
 
             channel.events[Id] = this;
@@ -86,6 +89,11 @@ namespace BattleBot
 
             if (IsAdmin(user))
             {
+                if (Done)
+                {
+                    return Log("This event is already done.");
+                }
+
                 if (Channel.ActiveEvent == null)
                 {
                     Round = 1;
@@ -189,9 +197,61 @@ namespace BattleBot
                 joiner.Actionpoints = 0;
             else
                 joiner.Actionpoints = Ruleset.Actionpoints;
+
+            foreach (Character curCharacter in characters)
+            {
+                if (curCharacter.aliases.Overlaps(joiner.aliases))
+                {
+                    HashSet<string> overlap = new HashSet<string>(joiner.aliases);
+                    overlap.IntersectWith(curCharacter.aliases);
+                    foreach (string alias in overlap)
+                    {
+                        joiner.aliases.Remove(alias);
+
+                        if (duplicates.ContainsKey(alias))
+                        {
+                            joiner.aliases.Add(alias + "#" + duplicates[alias]++);
+                        } else
+                        {
+                            duplicates.Add(alias, 3);
+                            joiner.aliases.Add(alias + "#2");
+                        }
+                    }
+                }
+            }
+
+            if (teams.Count > 0)
+            {
+                bool found = false;
+                foreach (Team curTeam in teams)
+                {
+                    if (curTeam.Name.Equals("Unassigned"))
+                    {
+                        curTeam.members.Add(joiner);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    Team unassigned = new Team("Unassigned");
+                    unassigned.members.Add(joiner);
+                    teams.Add(unassigned);
+                }
+
+            }
+
             characters.Add(joiner);
 
-            return Log($"{character.Name} was added to {Name}.");
+            string newAlias = "";
+            foreach (string curAlias in character.aliases)
+            {
+                newAlias = curAlias;
+                break;
+            }
+
+            return Log($"{character.Name} ({newAlias}) was added to {Name}.");
         }
 
         public string RemoveCharacter(Character character)
@@ -205,6 +265,8 @@ namespace BattleBot
                     if (curChar.Name.Equals(character.Name))
                     {
                         team.members.Remove(curChar);
+                        if (team.members.Count == 0) teams.Remove(team);
+                        break;
                     }
                 }
             }
@@ -225,6 +287,16 @@ namespace BattleBot
         {
             Idle = DateTimeOffset.Now;
 
+            if (teams.Count == 0 && characters.Count > 0)
+            {
+                Team unassigned = new Team("Unassigned");
+                foreach (Character character in characters)
+                {
+                    unassigned.members.Add(character);
+                }
+                teams.Add(unassigned);
+            }
+
             Team team = new Team(name);
             teams.Add(team);
 
@@ -235,10 +307,38 @@ namespace BattleBot
         {
             Idle = DateTimeOffset.Now;
 
+            Team unassigned = null;
+
+            if (teams.Count > 1)
+            {
+                foreach (Team curTeam in teams)
+                {
+                    if (curTeam.Name.Equals("Unassigned"))
+                    {
+                        unassigned = curTeam;
+                    }
+                }
+
+                if (unassigned == null)
+                {
+                    unassigned = new Team("Unassigned");
+                    teams.Add(unassigned);
+
+                } else if (teams.Count > 2)
+                {
+                    teams.Remove(unassigned);
+                }
+            }
+
             foreach (Team curTeam in teams)
             {
                 if (curTeam.Name.Equals(team.Name))
                 {
+                    foreach (Character curChar in curTeam.members)
+                    {
+                        unassigned.members.Add(curChar);
+                    }
+
                     teams.Remove(curTeam);
                     return Log($"{team.Name} was removed from {Name}.");
                 }
@@ -327,6 +427,7 @@ namespace BattleBot
             if (CheckVictoryCondition(result, out string sum))
             {
                 Channel.ActiveEvent = null;
+                Done = true;
                 return sum;
             }
 
@@ -387,7 +488,10 @@ namespace BattleBot
             {
                 foreach (Team team in teams)
                 {
-                    status += "\n" + team.GetStatus() + "\n";
+                    if (team.members.Count > 0)
+                    {
+                        status += "\n" + team.GetStatus() + "\n";
+                    }
                 }
             }
             else

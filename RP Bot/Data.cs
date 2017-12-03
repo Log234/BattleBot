@@ -474,10 +474,12 @@ namespace BattleBot
         public Character(string name, int health, int maxhealth, User admin)
         {
             this.Name = name;
-            this.aliases.Add(name.ToLower());
             if (name.Contains(" "))
             {
                 this.aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
+            } else
+            {
+                this.aliases.Add(name.ToLower());
             }
             this.Health = health;
             this.Maxhealth = maxhealth;
@@ -505,7 +507,7 @@ namespace BattleBot
             for (int i = 0; i < wards.Count; i++)
             {
                 amount = wards[i].TakeDamage(amount);
-                if (wards[i].Shield == 0) remove.Add(wards[i]);
+                if (wards[i].Shield <= 0) remove.Add(wards[i]);
             }
 
             foreach (Ward ward in remove)
@@ -535,11 +537,24 @@ namespace BattleBot
 
         public string GetStatus()
         {
-            string status = Name + ": " + Health;
+            string status = Name + ": ";
 
-            if (GetWards() > 0) status += " + " + GetWards();
+            for (int i = 0; i < Health; i++)
+            {
+                status += "⛊";
+            }
 
-            status += " / " + Maxhealth;
+            for (int i = 0; i < Maxhealth - Health; i++)
+            {
+                status += "⛉";
+            }
+
+            for (int i = 0; i < GetWards(); i++)
+            {
+                status += "⛨";
+            }
+
+            status += $" - {Actionpoints} Action points";
 
             return status;
         }
@@ -587,8 +602,11 @@ namespace BattleBot
 
         public int TakeDamage(int amount)
         {
-            int remainder = amount - Shield;
-            if (remainder > 0) return remainder;
+            Shield -= amount;
+            if (Shield < 0)
+            {
+                return Math.Abs(Shield);
+            }
             return 0;
         }
 

@@ -20,7 +20,7 @@ namespace BattleBot
                 }
 
                 result = result.Substring(0, result.Length - 2);
-                result += " and " + characters[characters.Length - 1];
+                result += " and " + characters[characters.Length - 1].Name;
             }
             else
             {

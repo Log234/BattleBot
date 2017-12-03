@@ -104,7 +104,8 @@ namespace BattleBot
                 }
             }
 
-            result += "\n" + character.Actionpoints + " action points remaining.";
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
 
             return result;
         }
@@ -131,11 +132,11 @@ namespace BattleBot
             int requiredPoints;
             if (targets.Length > 1)
             {
-                requiredPoints = 1;
+                requiredPoints = 2;
             }
             else
             {
-                requiredPoints = 2;
+                requiredPoints = 1;
             }
 
             if (character.Actionpoints < requiredPoints)
@@ -166,7 +167,8 @@ namespace BattleBot
                 }
             }
 
-            result += "\n" + character.Actionpoints + " action points remaining.";
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
 
             return result;
         }
@@ -178,11 +180,11 @@ namespace BattleBot
             int requiredPoints;
             if (targets.Length > 1)
             {
-                requiredPoints = 1;
+                requiredPoints = 2;
             }
             else
             {
-                requiredPoints = 2;
+                requiredPoints = 1;
             }
 
             if (character.Actionpoints < requiredPoints)
@@ -208,7 +210,8 @@ namespace BattleBot
                 }
             }
 
-            result += "\n" + character.Actionpoints + " action points remaining.";
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
 
             return result;
         }
