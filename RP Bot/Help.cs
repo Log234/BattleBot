@@ -16,7 +16,7 @@ namespace BattleBot
         public async Task Help()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("Type **!help <command>** to learn more about the different commands:\nfeedback\nchannel\nevent\nattack\nheal\nward");
+            await channel.SendMessageAsync("Type `!help <command>` to learn more about the different commands:\nfeedback\nroll\nflipcoin\nchannel\nevent\nattack\nheal\nward");
         }
 
         // Channel
@@ -28,7 +28,7 @@ namespace BattleBot
             public async Task Help()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!channel <command>** allows you to moderate channels with these commands:\nevent status");
+                await channel.SendMessageAsync("`!channel <command>` allows you to moderate channels with these commands:\nstatus");
             }
 
             [Command("status")]
@@ -36,7 +36,7 @@ namespace BattleBot
             public async Task Status()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!channel status [event ID]** I'll read out some information about the channel, such as the name, if there is an ongoing event, and what events are in it. :books:");
+                await channel.SendMessageAsync("`!channel status [event ID]` I'll read out some information about the channel, such as the name, if there is an ongoing event, and what events are in it. :books:");
             }
 
         }
@@ -49,7 +49,7 @@ namespace BattleBot
             public async Task Help()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event <command>** allows you to create, join or alter events with these commands:\nevent create\nevent start\nevent finish\nevent join\nevent add <command>\nevent remove <command>\nevent set <command>");
+                await channel.SendMessageAsync("`!event <command>` allows you to create, join or alter events with these commands:\nevent create\nevent start\nevent finish\nevent join\nevent add <command>\nevent remove <command>\nevent set <command>");
             }
 
             [Command("create")]
@@ -57,7 +57,7 @@ namespace BattleBot
             public async Task Create()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event create <name>** creates a new event and sets it active for you, so that following commands will be directed at this event.");
+                await channel.SendMessageAsync("`!event create <name>` creates a new event and sets it active for you, so that following commands will be directed at this event.");
             }
 
             [Command("start")]
@@ -65,7 +65,7 @@ namespace BattleBot
             public async Task Start()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event start <event ID>** starts an event and sets it active for you.\nAfter you have added all the characters and prepared the event, use this command to start the combat.");
+                await channel.SendMessageAsync("`!event start <event ID>` starts an event and sets it active for you.\nAfter you have added all the characters and prepared the event, use this command to start the combat.");
             }
 
             [Command("status")]
@@ -73,7 +73,7 @@ namespace BattleBot
             public async Task Status()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event status [event ID]** I'll read out some information about the event, such as the name, whether it has started and who have joined it. :books:");
+                await channel.SendMessageAsync("`!event status [event ID]` I'll read out some information about the event, such as the name, whether it has started and who have joined it. :books:");
             }
 
 
@@ -82,7 +82,7 @@ namespace BattleBot
             public async Task Finish()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event finish <event ID>** ends an event and posts the resulting event log to the chat. Use this command when the event is finished and you no longer need it.");
+                await channel.SendMessageAsync("`!event finish <event ID>` ends an event and posts the resulting event log to the chat. Use this command when the event is finished and you no longer need it.");
             }
 
             [Command("join")]
@@ -90,7 +90,7 @@ namespace BattleBot
             public async Task Join()
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                await channel.SendMessageAsync("**!event join <event ID>** allows you to join an event and sets it active for you, so that following commands wil be directed at this event.");
+                await channel.SendMessageAsync("`!event join <event ID>` allows you to join an event and sets it active for you, so that following commands wil be directed at this event.");
             }
 
             [Group("add")]
@@ -101,7 +101,7 @@ namespace BattleBot
                 public async Task Add()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event add <command>** allows you to add characters, NPCs, administrators and teams to an event with these commands:\nevent add admin\nevent add character\nevent add new <command>");
+                    await channel.SendMessageAsync("`!event add <command>` allows you to add characters, NPCs, administrators and teams to an event with these commands:\nevent add admin\nevent add character\nevent add new <command>");
                 }
 
                 [Command("admin")]
@@ -109,7 +109,7 @@ namespace BattleBot
                 public async Task AddAdmin()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event add admin <User tag>** allows you to add an admin to your event, who will have access to administrative commands such as **!event start <event ID>** and **!event set ruleset <ruleset ID>**.");
+                    await channel.SendMessageAsync("`!event add admin <User tag>` allows you to add an admin to your event, who will have access to administrative commands such as `!event start <event ID>` and `!event set ruleset <ruleset ID>`.");
                 }
 
                 [Command("character")]
@@ -117,7 +117,7 @@ namespace BattleBot
                 public async Task AddCharacter()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event add character <character alias>** allows you to add one of your existing characters to this event.");
+                    await channel.SendMessageAsync("`!event add character <character alias>` allows you to add one of your existing characters to this event.");
                 }
 
                 [Group("new")]
@@ -128,7 +128,7 @@ namespace BattleBot
                     public async Task New()
                     {
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                        await channel.SendMessageAsync("**!event add new <command>** allows you create new characters, NPCs and teams for this event and they will be added automatically:\nevent add new character\nevent add new npc\nevent add new team");
+                        await channel.SendMessageAsync("`!event add new <command>` allows you create new characters, NPCs and teams for this event and they will be added automatically:\nevent add new character\nevent add new npc\nevent add new team");
                     }
 
                     [Command("character")]
@@ -136,7 +136,7 @@ namespace BattleBot
                     public async Task NewCharacter()
                     {
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                        await channel.SendMessageAsync("**!event add new character <event ID> <name>** allows you to create a new character and add it to this event.\nThe character alias will by default be the first name of the character.");
+                        await channel.SendMessageAsync("`!event add new character <event ID> <name>` allows you to create a new character and add it to this event.\nThe character alias will by default be the first name of the character.");
                     }
 
                     [Command("npc")]
@@ -144,7 +144,7 @@ namespace BattleBot
                     public async Task NewNpc()
                     {
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                        await channel.SendMessageAsync("**!event add new npc <event ID> <name>** allows you to create a new NPC and add it to this event.\nThe event rounds does not wait for NPCs to spend their action points, when all normal characters have spent their points the round will end.");
+                        await channel.SendMessageAsync("`!event add new npc <event ID> <name>` allows you to create a new NPC and add it to this event.\nThe event rounds does not wait for NPCs to spend their action points, when all normal characters have spent their points the round will end.");
                     }
 
                     [Command("team")]
@@ -152,7 +152,7 @@ namespace BattleBot
                     public async Task NewTeam()
                     {
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                        await channel.SendMessageAsync("**!event add new team <event ID> <team name>** allows you to create a new team and add it to this event.\nCharacters and NPCs can be added to teams with !event set team <character alias> <team alias>. When only one team is left standing they win.");
+                        await channel.SendMessageAsync("`!event add new team <event ID> <team name>` allows you to create a new team and add it to this event.\nCharacters and NPCs can be added to teams with !event set team <character alias> <team alias>. When only one team is left standing they win.");
                     }
                 }
             }
@@ -166,7 +166,7 @@ namespace BattleBot
                 public async Task Remove()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event remove <command>** allows you remove characters, NPCs, teams and admins from this event:\nevent remove admin\nevent remove character\nevent remove npc\nevent remove team");
+                    await channel.SendMessageAsync("`!event remove <command>` allows you remove characters, NPCs, teams and admins from this event:\nevent remove admin\nevent remove character\nevent remove npc\nevent remove team");
                 }
 
                 [Command("admin")]
@@ -174,7 +174,7 @@ namespace BattleBot
                 public async Task RemoveAdmin()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event remove admin <user tag>** removes the given admin from the event.");
+                    await channel.SendMessageAsync("`!event remove admin <user tag>` removes the given admin from the event.");
                 }
 
                 [Command("character")]
@@ -182,7 +182,7 @@ namespace BattleBot
                 public async Task RemoveCharacter()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event remove character <character alias>** removes the given character from the event.");
+                    await channel.SendMessageAsync("`!event remove character <character alias>` removes the given character from the event.");
                 }
 
                 [Command("npc")]
@@ -190,7 +190,7 @@ namespace BattleBot
                 public async Task RemoveNpc()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event remove npc <character alias>** removes the given npc from the event.");
+                    await channel.SendMessageAsync("`!event remove npc <character alias>` removes the given npc from the event.");
                 }
 
                 [Command("team")]
@@ -198,7 +198,7 @@ namespace BattleBot
                 public async Task RemoveTeam()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event remove team <team alias>** removes the given team from the event.\nCharacters from the removed team will remain in the event, but not in any team until they are reassigned.");
+                    await channel.SendMessageAsync("`!event remove team <team alias>` removes the given team from the event.\nCharacters from the removed team will remain in the event, but not in any team until they are reassigned.");
                 }
             }
 
@@ -211,7 +211,7 @@ namespace BattleBot
                 public async Task Remove()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event set <command>** allows you change details for this event:\nevent set ruleset\nevent set team\nevent set maxhealth\nevent set health");
+                    await channel.SendMessageAsync("`!event set <command>` allows you change details for this event:\nevent set ruleset\nevent set team\nevent set maxhealth\nevent set health");
                 }
 
                 [Command("ruleset")]
@@ -219,7 +219,7 @@ namespace BattleBot
                 public async Task SetRuleset()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event set ruleset <ruleset ID>** changes the event ruleset.\nAvailable rulesets:\n Amentia's ruleset - **amentia**");
+                    await channel.SendMessageAsync("`!event set ruleset <ruleset ID>` changes the event ruleset.\nAvailable rulesets:\n Amentia's ruleset - **amentia**");
                 }
 
                 [Command("team")]
@@ -227,7 +227,7 @@ namespace BattleBot
                 public async Task SetTeam()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event set team <character alias> <team alias>** assigns the character to the given team, a character can only be in one team at a time.");
+                    await channel.SendMessageAsync("`!event set team <character alias> <team alias>` assigns the character to the given team, a character can only be in one team at a time.");
                 }
 
                 [Command("maxhealth")]
@@ -235,7 +235,7 @@ namespace BattleBot
                 public async Task SetMaxhealth()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event set maxhealth <character alias> <health>** sets the character's max health to the given value.");
+                    await channel.SendMessageAsync("`!event set maxhealth <character alias> <health>` sets the character's max health to the given value.");
                 }
 
                 [Command("health")]
@@ -243,7 +243,7 @@ namespace BattleBot
                 public async Task SetHealth()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-                    await channel.SendMessageAsync("**!event set health <character alias> <health>** sets the character's health to the given value.");
+                    await channel.SendMessageAsync("`!event set health <character alias> <health>` sets the character's health to the given value.");
                 }
             }
         }
@@ -253,7 +253,23 @@ namespace BattleBot
         public async Task Feedback()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("**!feedback <feedback text>** Let me know how I'm doing and what I can get better at!\nI'll do my very best to be the best BattleBot I can be. :smile:");
+            await channel.SendMessageAsync("`!feedback <feedback text>` Let me know how I'm doing and what I can get better at!\nI'll do my very best to be the best BattleBot I can be. " + Emotes.Heart);
+        }
+
+        [Command("roll")]
+        [Summary("Roll a dice help")]
+        public async Task Roll()
+        {
+            IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+            await channel.SendMessageAsync("`!roll <dice(s)>` Here you can simulate rolling dices!\nJust type !roll d<dice size>, for example !roll d10 for a d10 dice. You may also roll multiple dices at a time by typing !roll d10+d10.\nAdd, subtract, multiply or divide by changing the + for a -, * or /.");
+        }
+
+        [Command("flipcoin")]
+        [Summary("Flip a coin help")]
+        public async Task Flip()
+        {
+            IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+            await channel.SendMessageAsync("`!flipcoin` Here you can flip a coin to get either heads or tail.");
         }
 
         [Command("attack")]
@@ -261,7 +277,7 @@ namespace BattleBot
         public async Task Attack()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("**!attack <character alias> <target-1 alias> ... <target-n alias>** the character will attempt to attack one or more targets according to the event ruleset. Yarrrrr! :crossed_swords:\nThis only works after the event has started.");
+            await channel.SendMessageAsync("`!attack <character alias> <target-1 alias> ... <target-n alias>` the character will attempt to attack one or more targets according to the event ruleset. Yarrrrr! :crossed_swords:\nThis only works after the event has started.");
         }
 
         [Command("heal")]
@@ -269,7 +285,7 @@ namespace BattleBot
         public async Task Heal()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("**!heal <character alias> <target-1 alias> ... <target-n alias>** the character will attempt to heal one or more targets according to the event ruleset. :hearts:\nThis only works after the event has started.");
+            await channel.SendMessageAsync("`!heal <character alias> <target-1 alias> ... <target-n alias>` the character will attempt to heal one or more targets according to the event ruleset. :hearts:\nThis only works after the event has started.");
         }
 
         [Command("ward")]
@@ -277,7 +293,7 @@ namespace BattleBot
         public async Task Ward()
         {
             IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
-            await channel.SendMessageAsync("**!ward <character alias> <target-1 alias> ... <target-n alias>** the character will attempt to ward one or more targets according to the event ruleset. :shield:\nThis only works after the event has started.");
+            await channel.SendMessageAsync("`!ward <character alias> <target-1 alias> ... <target-n alias>` the character will attempt to ward one or more targets according to the event ruleset. :shield:\nThis only works after the event has started.");
         }
     }
 }

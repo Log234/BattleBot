@@ -177,7 +177,7 @@ namespace BattleBot
             Idle = DateTimeOffset.Now;
             if (HasStarted() && !Ruleset.JoinAfterStart && !IsAdmin(user))
             {
-                return Log("The event has already started, so you cannot add a new character.");
+                return Log("The event has already started, so you cannot add a new character. " + Emotes.Annoyed);
             }
 
             Character joiner = character.CopyOf();
@@ -245,19 +245,20 @@ namespace BattleBot
             characters.Add(joiner);
 
             string newAlias = "";
-            foreach (string curAlias in character.aliases)
+            foreach (string curAlias in joiner.aliases)
             {
                 newAlias = curAlias;
                 break;
             }
 
-            return Log($"{character.Name} ({newAlias}) was added to {Name}.");
+            return Log($"{joiner.Name} ({newAlias}) was added to {Name}.");
         }
 
         public string RemoveCharacter(Character character)
         {
             Idle = DateTimeOffset.Now;
 
+            bool done = false;
             foreach (Team team in teams)
             {
                 foreach (Character curChar in team.members)
@@ -266,9 +267,11 @@ namespace BattleBot
                     {
                         team.members.Remove(curChar);
                         if (team.members.Count == 0) teams.Remove(team);
+                        done = true;
                         break;
                     }
                 }
+                if (done) break;
             }
 
             foreach (Character curChar in characters)
@@ -280,7 +283,7 @@ namespace BattleBot
                 }
             }
 
-            return Log($"Could not find that character.");
+            return Log($"Could not find that character. {Emotes.Confused}");
         }
 
         public string AddTeam(string name)

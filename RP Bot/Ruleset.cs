@@ -54,7 +54,7 @@ namespace BattleBot
             WardCleansesDoTs = false;
 
             CharMaxhealth = 3;
-            NpcMaxhealth = 4;
+            NpcMaxhealth = 3;
             Actionpoints = 2;
 
             WardHealth = 1;
@@ -68,7 +68,7 @@ namespace BattleBot
 
             if (character.Actionpoints < 2)
             {
-                return "Insufficient action points.";
+                return "Insufficient action points." + Emotes.Annoyed;
             }
             else
             {
@@ -112,17 +112,17 @@ namespace BattleBot
 
         public override string Ranged(Character character, Character[] targets)
         {
-            return "Not implemented.";
+            return "Not implemented. " + Emotes.Confused;
         }
 
         public override string Dot(Character character, Character[] targets)
         {
-            return "Not implemented.";
+            return "Not implemented. " + Emotes.Confused;
         }
 
         public override string Stun(Character character, Character[] targets)
         {
-            return "Not implemented.";
+            return "Not implemented. " + Emotes.Confused;
         }
 
         public override string Heal(Character character, Character[] targets)
@@ -140,7 +140,7 @@ namespace BattleBot
             }
 
             if (character.Actionpoints < requiredPoints)
-                return "Insufficient action points.";
+                return "Insufficient action points. " + Emotes.Annoyed;
             else
                 character.Action(requiredPoints);
 
@@ -188,7 +188,189 @@ namespace BattleBot
             }
 
             if (character.Actionpoints < requiredPoints)
-                return "Insufficient action points.";
+                return "Insufficient action points. " + Emotes.Annoyed;
+            else
+                character.Action(requiredPoints);
+
+            string result = character.Name + " attempts to ward " + Utilities.AppendNames(targets) + ":";
+            int roll;
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                roll = rnd.Next(1, 10);
+
+                if (roll <= 5)
+                {
+                    result += "\n" + character.Name + " **missed** " + targets[i].Name + ". (rolled: " + roll + ")";
+                }
+                else
+                {
+                    targets[i].Ward(new Ward(WardHealth, WardDuration));
+                    result += "\n" + character.Name + " **warded** " + targets[i].Name + ". (rolled: " + roll + ")";
+                }
+            }
+
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
+
+            return result;
+        }
+    }
+
+    [Serializable]
+    class Amentia2Ruleset : Ruleset
+    {
+
+        public Amentia2Ruleset()
+        {
+            Name = "Amentia's Second Ruleset";
+            Description = "";
+            JoinAfterStart = true;
+            WaitOnJoin = true;
+            AoeAttacks = true;
+            AoeRanged = false;
+            AoeHeals = true;
+            AoeWards = false;
+            Stuns = false;
+            Dots = false;
+            WardCleansesDoTs = false;
+
+            CharMaxhealth = 3;
+            NpcMaxhealth = 3;
+            Actionpoints = 2;
+
+            WardHealth = 1;
+            WardDuration = 1;
+
+        }
+
+        public override string Attack(Character character, Character[] targets)
+        {
+            Random rnd = new Random();
+
+            if (character.Actionpoints < 2)
+            {
+                return "Insufficient action points." + Emotes.Annoyed;
+            }
+            else
+            {
+                character.Action(2);
+            }
+
+            string result = character.Name + " attempts to attack " + Utilities.AppendNames(targets) + ":";
+            int roll;
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                roll = rnd.Next(1, 10);
+
+                if (roll == 1)
+                {
+                    character.TakeDamage(2);
+                    result += "\n" + character.Name + " **critically failed** " + targets[i].Name + " and took **2** damage. (rolled: " + roll + ")";
+                }
+                else if (roll <= 5)
+                {
+                    character.TakeDamage(1);
+                    result += "\n" + character.Name + " **missed** " + targets[i].Name + " and took **1** damage. (rolled: " + roll + ")";
+                }
+                else if (roll < 10)
+                {
+                    targets[i].TakeDamage(1);
+                    result += "\n" + character.Name + " **hit** " + targets[i].Name + " and did **1** damage. (rolled: " + roll + ")";
+                }
+                else
+                {
+                    targets[i].TakeDamage(2);
+                    result += "\n" + character.Name + " **critically hit** " + targets[i].Name + " and did **2** damage. (rolled: " + roll + ")";
+                }
+            }
+
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
+
+            return result;
+        }
+
+        public override string Ranged(Character character, Character[] targets)
+        {
+            return "Not implemented. " + Emotes.Confused;
+        }
+
+        public override string Dot(Character character, Character[] targets)
+        {
+            return "Not implemented. " + Emotes.Confused;
+        }
+
+        public override string Stun(Character character, Character[] targets)
+        {
+            return "Not implemented. " + Emotes.Confused;
+        }
+
+        public override string Heal(Character character, Character[] targets)
+        {
+            Random rnd = new Random();
+
+            int requiredPoints;
+            if (targets.Length > 1)
+            {
+                requiredPoints = 2;
+            }
+            else
+            {
+                requiredPoints = 1;
+            }
+
+            if (character.Actionpoints < requiredPoints)
+                return "Insufficient action points. " + Emotes.Annoyed;
+            else
+                character.Action(requiredPoints);
+
+            string result = character.Name + " attempts to heal " + Utilities.AppendNames(targets) + ":";
+            int roll;
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                roll = rnd.Next(1, 10);
+
+                if (roll <= 5)
+                {
+                    result += "\n" + character.Name + " **missed** " + targets[i].Name + ". (rolled: " + roll + ")";
+                }
+                else if (roll < 10)
+                {
+                    targets[i].Heal(1);
+                    result += "\n" + character.Name + " **healed** " + targets[i].Name + " for **1** health. (rolled: " + roll + ")";
+                }
+                else
+                {
+                    targets[i].Heal(2);
+                    result += "\n" + character.Name + " **critically healed** " + targets[i].Name + " for **2** health. (rolled: " + roll + ")";
+                }
+            }
+
+            if (character.Actionpoints > 0)
+                result += "\n" + character.Actionpoints + " action points remaining.";
+
+            return result;
+        }
+
+        public override string Ward(Character character, Character[] targets)
+        {
+            Random rnd = new Random();
+
+            int requiredPoints;
+            if (targets.Length > 1)
+            {
+                requiredPoints = 2;
+            }
+            else
+            {
+                requiredPoints = 1;
+            }
+
+            if (character.Actionpoints < requiredPoints)
+                return "Insufficient action points. " + Emotes.Annoyed;
             else
                 character.Action(requiredPoints);
 

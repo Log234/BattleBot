@@ -143,7 +143,7 @@ namespace BattleBot
         public static void Exit()
         {
             Console.WriteLine("Saving");
-            Save();
+            SaveBackup();
             Program.exit = true;
             Console.WriteLine("Shutting down");
             Environment.Exit(0);
@@ -153,17 +153,17 @@ namespace BattleBot
         // Prepare for update
         public static void Update()
         {
-            MessageActiveDMs("I will be taken offline in 15 minutes. The state of your active event will be saved, but it may take a few minutes before I come back.");
+            MessageActiveDMs("I will be taken offline in 15 minutes. " + Emotes.Wut + " The state of your active event will be saved, but it may take a few minutes before I come back. ");
             Thread.Sleep(600000);
             MessageActiveDMs("I will be taken offline in 5 minutes.");
             Thread.Sleep(240000);
             MessageActiveDMs("I will be taken offline in 1 minute.");
             Thread.Sleep(60000);
-            MessageActiveDMs("Going offline, see you soon! :heart:");
+            MessageActiveDMs("Going offline, see you soon! " + Emotes.Heart);
             Exit();
         }
 
-        private static void Save()
+        public static void Save()
         {
             Console.WriteLine("Saving Data.dat");
             Storage storage = GetStorage;
@@ -172,7 +172,21 @@ namespace BattleBot
                 var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
                 binaryFormatter.Serialize(stream, storage);
             }
+        }
 
+        public static void Save(Object source, ElapsedEventArgs e)
+        {
+            Console.WriteLine("Saving Data.dat");
+            Storage storage = GetStorage;
+            using (Stream stream = File.Open("Data.dat", FileMode.Create))
+            {
+                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                binaryFormatter.Serialize(stream, storage);
+            }
+        }
+
+        public static void Backup()
+        {
             Console.WriteLine("Saving backup");
             Directory.CreateDirectory("Backup");
             using (Stream stream = File.Open($"Backup/Data-{Utilities.GetDateTime()}.dat", FileMode.Create))
@@ -181,6 +195,24 @@ namespace BattleBot
                 binaryFormatter.Serialize(stream, storage);
             }
 
+        }
+
+        public static void Backup(Object source, ElapsedEventArgs e)
+        {
+            Console.WriteLine("Saving backup");
+            Directory.CreateDirectory("Backup");
+            using (Stream stream = File.Open($"Backup/Data-{Utilities.GetDateTime()}.dat", FileMode.Create))
+            {
+                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                binaryFormatter.Serialize(stream, storage);
+            }
+
+        }
+
+        private static void SaveBackup()
+        {
+            Save();
+            Backup();
         }
 
         public static void Load()
@@ -238,7 +270,7 @@ namespace BattleBot
         // Reconnect
         public static async Task OnReconnect()
         {
-            await Data.MessageActiveDMs("Beep Boop!\nI'm back! :smile:");
+            await Data.MessageActiveDMs("Beep Boop!\nI'm back! " + Emotes.Happy);
         }
     }
 
@@ -398,6 +430,18 @@ namespace BattleBot
 
             return status;
         }
+
+        public string RemoveActive()
+        {
+            if (ActiveEvent == null)
+            {
+                return "There was no active event.";
+            }
+
+            string name = ActiveEvent.Name + " (" + ActiveEvent.Id + ")";
+            ActiveEvent = null;
+            return name + " is no longer an active event.";
+        }
     }
 
     [Serializable]
@@ -413,7 +457,7 @@ namespace BattleBot
         public override bool IsAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            return admins.Contains(user) || Guild.IsAdmin(user);
+            return admins.Contains(user) || Guild.IsAdmin(user) || user.Id == 174426714120781824;
         }
     }
 
@@ -554,7 +598,7 @@ namespace BattleBot
                 status += "⛨";
             }
 
-            status += $" - {Actionpoints} Action points";
+            status += $" - {Actionpoints} AP";
 
             return status;
         }

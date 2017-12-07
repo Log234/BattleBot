@@ -9,6 +9,7 @@ namespace BattleBot
     using Discord.WebSocket;
     using Discord.Commands;
     using Microsoft.Extensions.DependencyInjection;
+    using System.Timers;
 
     public class Program
     {
@@ -17,6 +18,9 @@ namespace BattleBot
         private CommandService _commands;
         private DiscordSocketClient _client;
         private IServiceProvider _services;
+
+        private static Timer save = new Timer(600000);
+        private static Timer backup = new Timer(3600000);
 
         private static void Main(string[] args) => new Program().StartAsync().GetAwaiter().GetResult();
 
@@ -32,7 +36,10 @@ namespace BattleBot
             });
 
             _client.Log += Log;
-            _commands = new CommandService();
+            _commands = new CommandService(new CommandServiceConfig
+            {
+                LogLevel = LogSeverity.Info
+            });
             _commands.Log += Log;
 
             string token = System.IO.File.ReadAllText(@"C:\Secrets\BattleBot.txt");
@@ -49,6 +56,15 @@ namespace BattleBot
 
             Data.client = _client;
             Data.client.Ready += Data.OnReconnect;
+
+            save.AutoReset = true;
+            save.Elapsed += Data.Save;
+            save.Start();
+
+            backup.AutoReset = true;
+            backup.Elapsed += Data.Backup;
+            backup.Start();
+
 
 
             await Task.Delay(-1);
@@ -91,7 +107,7 @@ namespace BattleBot
             // Execute the command. (result does not indicate a return value, 
             // rather an object stating if the command executed successfully)
             var result = await _commands.ExecuteAsync(context, argPos, _services);
-            if (!result.IsSuccess)
+            if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
                 await context.Channel.SendMessageAsync(result.ErrorReason);
         }
     }

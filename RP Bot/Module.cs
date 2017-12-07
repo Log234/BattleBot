@@ -20,6 +20,25 @@ namespace BattleBot
         {
             await ReplyAsync(Data.GetChannel(Context.Message.Channel as SocketChannel).GetStatus());
         }
+
+        [Group("remove")]
+        public class RemoveModule : ModuleBase<SocketCommandContext>
+        {
+            [Command("activeevent")]
+            [Summary("Removes the active event.")]
+            public async Task RemoveEvent()
+            {
+                Channel channel = Data.GetChannel(Context.Message.Channel as SocketChannel);
+                User user = Data.GetUser(Context.Message.Author);
+                if (!channel.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have admin access in this channel.");
+                    return;
+                }
+
+                await ReplyAsync(channel.RemoveActive());
+            }
+        }
     }
 
     [Group("event")]
@@ -34,7 +53,7 @@ namespace BattleBot
             Channel channel = Data.GetChannel(Context.Message.Channel as SocketChannel);
             Event curEvent = new Event(dm, channel, name);
 
-            await ReplyAsync($"New event **{curEvent.Name} ({curEvent.Id})** created!\nType **!event join {curEvent.Id}** to join.");
+            await ReplyAsync($"New event **{curEvent.Name} ({curEvent.Id})** created!\nType `!event join {curEvent.Id}` to join.");
         }
 
 
@@ -523,7 +542,15 @@ namespace BattleBot
         [Summary("Hugs.")]
         public async Task Hug()
         {
-            await ReplyAsync($"-hugs {Context.Message.Author.Mention}- :heart:");
+            await ReplyAsync($"-hugs {Context.Message.Author.Mention}- " + Emotes.Heart);
+        }
+
+        // Plays dead
+        [Command("playdead")]
+        [Summary("Plays dead.")]
+        public async Task PlayDead()
+        {
+            await ReplyAsync(Emotes.Dead);
         }
 
         // Feedback
@@ -532,9 +559,36 @@ namespace BattleBot
         public async Task Feedback([Remainder] string feedback)
         {
             string author = Context.Message.Author.Mention;
-            await ReplyAsync($"Thank you very much for your feed back, {author}! :heart:");
+            await ReplyAsync($"Thank you very much for your feedback, {author}! " + Emotes.Heart);
             SocketUser log = Context.Client.GetUser(174426714120781824);
             await (log.SendMessageAsync($"From: {author}\n" + feedback));
+        }
+
+        // Roll dice
+        [Command("roll")]
+        [Summary("Roll a dice.")]
+        public async Task Roll()
+        {
+            string author = Context.Message.Author.Mention;
+            await ReplyAsync(Dice.Roll(author, "d6"));
+        }
+
+        // Roll dice
+        [Command("roll")]
+        [Summary("Roll a dice.")]
+        public async Task Roll([Remainder] string cmd)
+        {
+            string author = Context.Message.Author.Mention;
+            await ReplyAsync(Dice.Roll(author, cmd));
+        }
+
+        // Flip coin
+        [Command("flipcoin")]
+        [Summary("Flip a coin.")]
+        public async Task Flip()
+        {
+            string author = Context.Message.Author.Mention;
+            await ReplyAsync(Dice.Flip(author));
         }
 
         // Immediate shutdown
@@ -544,10 +598,10 @@ namespace BattleBot
         {
             if (Context.Message.Author.Id != 174426714120781824)
             {
-                await ReplyAsync("You are not permitted to use this command.");
+                await ReplyAsync("You are not permitted to use this command. " + Emotes.Angry);
                 return;
             }
-            await ReplyAsync("Shutting down.");
+            await ReplyAsync("Shutting down. " + Emotes.Dead);
             Data.Exit();
         }
 
@@ -558,10 +612,10 @@ namespace BattleBot
         {
             if (Context.Message.Author.Id != 174426714120781824)
             {
-                await ReplyAsync("You are not permitted to use this command.");
+                await ReplyAsync("You are not permitted to use this command. " + Emotes.Angry);
                 return;
             }
-            await ReplyAsync("Starting shutdown sequence.");
+            await ReplyAsync("Starting shutdown sequence. " + Emotes.Sad);
             new Thread(Data.Update).Start();
         }
     }
