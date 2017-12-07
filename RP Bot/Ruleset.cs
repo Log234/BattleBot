@@ -102,6 +102,17 @@ namespace BattleBot
                     targets[i].TakeDamage(2);
                     result += "\n" + character.Name + " **critically hit** " + targets[i].Name + " and did **2** damage. (rolled: " + roll + ")";
                 }
+
+                if (character.Health <= 0)
+                {
+                    character.Actionpoints = 0;
+                    return "\n" + character.Name + " is out of the battle. " + Emotes.Dead;
+                }
+                else if (targets[i].Health <= 0)
+                {
+                    targets[i].Actionpoints = 0;
+                    result += "\n" + targets[i].Name + " is out of the battle. " + Emotes.Dead;
+                }
             }
 
             if (character.Actionpoints > 0)
@@ -250,6 +261,11 @@ namespace BattleBot
 
             if (character.Actionpoints < 2)
             {
+                if (character.Health <= 0)
+                {
+                    return character.Name + " is out of the battle." + Emotes.Annoyed;
+                }
+
                 return "Insufficient action points." + Emotes.Annoyed;
             }
             else
@@ -258,31 +274,16 @@ namespace BattleBot
             }
 
             string result = character.Name + " attempts to attack " + Utilities.AppendNames(targets) + ":";
-            int roll;
 
             for (int i = 0; i < targets.Length; i++)
             {
-                roll = rnd.Next(1, 10);
-
-                if (roll == 1)
+                result += "\n" + AttemptAttack(character, targets[i]);
+                if (character.Health == 0)
                 {
-                    character.TakeDamage(2);
-                    result += "\n" + character.Name + " **critically failed** " + targets[i].Name + " and took **2** damage. (rolled: " + roll + ")";
-                }
-                else if (roll <= 5)
+                    return result;
+                } else if (targets[i].Health != 0)
                 {
-                    character.TakeDamage(1);
-                    result += "\n" + character.Name + " **missed** " + targets[i].Name + " and took **1** damage. (rolled: " + roll + ")";
-                }
-                else if (roll < 10)
-                {
-                    targets[i].TakeDamage(1);
-                    result += "\n" + character.Name + " **hit** " + targets[i].Name + " and did **1** damage. (rolled: " + roll + ")";
-                }
-                else
-                {
-                    targets[i].TakeDamage(2);
-                    result += "\n" + character.Name + " **critically hit** " + targets[i].Name + " and did **2** damage. (rolled: " + roll + ")";
+                    result += "\n" + AttemptAttack(targets[i], character);
                 }
             }
 
@@ -290,6 +291,47 @@ namespace BattleBot
                 result += "\n" + character.Actionpoints + " action points remaining.";
 
             return result;
+        }
+
+        private string AttemptAttack(Character character, Character target)
+        {
+            string status = "";
+            Random rnd = new Random();
+            int roll = rnd.Next(1, 10);
+
+            if (roll <= 2)
+            {
+                character.TakeDamage(2);
+                status += character.Name + " **critically failed** " + target.Name + " and took **2** damage. (rolled: " + roll + ")";
+            }
+            else if (roll <= 5)
+            {
+                status += character.Name + " **missed** " + target.Name + ".";
+            }
+            else if (roll < 9)
+            {
+                target.TakeDamage(1);
+                status += character.Name + " **hit** " + target.Name + " and did **1** damage. (rolled: " + roll + ")";
+            }
+            else
+            {
+                target.TakeDamage(2);
+                status += character.Name + " **critically hit** " + target.Name + " and did **2** damage. (rolled: " + roll + ")";
+            }
+
+            if (character.Health <= 0)
+            {
+                character.Actionpoints = 0;
+                status += "\n" + character.Name + " is out of the battle. " + Emotes.Dead;
+            }
+            else if (target.Health <= 0)
+            {
+                target.Actionpoints = 0;
+                status += "\n" + target.Name + " is out of the battle. " + Emotes.Dead;
+            }
+
+            return status;
+
         }
 
         public override string Ranged(Character character, Character[] targets)

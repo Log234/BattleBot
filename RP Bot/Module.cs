@@ -351,9 +351,12 @@ namespace BattleBot
                     case "amentia's":
                     case "amentia's ruleset":
                         curEvent.Ruleset = new AmentiaRuleset();
-                        await ReplyAsync($"Ruleset for the event {curEvent.Id} has changed to {curEvent.Ruleset.Name}.");
+                        await ReplyAsync($"Ruleset for the event {curEvent.Name} has changed to {curEvent.Ruleset.Name}.");
                         break;
-
+                    case "amentia2":
+                        curEvent.Ruleset = new Amentia2Ruleset();
+                        await ReplyAsync($"Ruleset for the event {curEvent.Name} has changed to {curEvent.Ruleset.Name}");
+                        break;
                     default:
                         await ReplyAsync("Unknown ruleset.");
                         break;
