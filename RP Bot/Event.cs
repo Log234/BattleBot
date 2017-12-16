@@ -1,7 +1,7 @@
-﻿using Discord.WebSocket;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.IO;
+using Discord.WebSocket;
 
 namespace BattleBot
 {
@@ -9,38 +9,45 @@ namespace BattleBot
     class Event
     {
         public String Id { get; }
-        public String Name { get; internal set; }
+        public String Name { get; private set; }
         public Channel Channel { get; }
-        public DateTimeOffset Created { get; }
-        public DateTimeOffset Idle { get; set; }
+        public DateTimeOffset Idle { get; private set; }
         public Ruleset Ruleset { get; set; }
         public User Dm { get; }
-        private HashSet<ulong> admins = new HashSet<ulong>();
-        private List<Team> teams = new List<Team>();
-        public HashSet<Character> characters = new HashSet<Character>();
-        public HashSet<ulong> users = new HashSet<ulong>();
+        private readonly HashSet<ulong> _admins = new HashSet<ulong>();
+        private readonly List<Team> _teams = new List<Team>();
+        public readonly HashSet<Character> Characters = new HashSet<Character>();
+        public readonly HashSet<ulong> Users = new HashSet<ulong>();
 
-        private Dictionary<string, int> duplicates = new Dictionary<string, int>();
-        public int Round { get; internal set; }
-        public bool Done { get; internal set; }
-        private string log;
+        private readonly Dictionary<string, int> _duplicates = new Dictionary<string, int>();
+        private int Round { get; set; }
+        private bool Done { get; set; }
+        private string _log;
 
         public Event(User dm, Channel channel, string name)
         {
             Id = channel.GetEventName(dm);
             Name = name;
             Channel = channel;
-            Created = DateTimeOffset.Now;
             Idle = DateTimeOffset.Now;
             Ruleset = new AmentiaRuleset();
             Dm = dm;
             Round = 0;
             Done = false;
-            log = "";
+            _log = "";
 
             channel.events[Id] = this;
-            dm.activeEvents.Add(channel.Id, this);
-            users.Add(dm.Id);
+            if (dm == null)
+            {
+                Console.WriteLine("DM Null");
+            }
+            if (dm.ActiveEvents == null)
+            {
+                Console.WriteLine("ActiveEvents Null");
+            }
+
+            dm.SetActiveEvent(channel.Id, this);
+            Users.Add(dm.Id);
 
             Console.WriteLine("Created event: " + Name + " (" + Id + ")");
         }
@@ -49,16 +56,16 @@ namespace BattleBot
         public string AddAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            if (admins.Contains(user.Id))
+            if (_admins.Contains(user.Id))
             {
                 return Log($"{user.Tag} is already an administrator of {Name}.");
             }
 
-            admins.Add(user.Id);
+            _admins.Add(user.Id);
 
-            if (!users.Contains(user.Id))
+            if (!Users.Contains(user.Id))
             {
-                users.Add(user.Id);
+                Users.Add(user.Id);
             }
 
             return Log($"{user.Tag} has been added as administrator of {Name}.");
@@ -67,19 +74,19 @@ namespace BattleBot
         public string RemoveAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            if (!admins.Contains(user.Id))
+            if (!_admins.Contains(user.Id))
             {
                 return Log($"{user.Tag} is not an administrator of {Name}.");
             }
 
-            admins.Remove(user.Id);
+            _admins.Remove(user.Id);
             return Log($"{user.Tag} is nolonger administrator of {Name}.");
         }
 
         public bool IsAdmin(User user)
         {
             Idle = DateTimeOffset.Now;
-            return admins.Contains(user.Id) || Dm.Equals(user) || Channel.IsAdmin(user);
+            return _admins.Contains(user.Id) || Dm.Equals(user) || Channel.IsAdmin(user);
         }
 
         // Commands
@@ -99,23 +106,17 @@ namespace BattleBot
                     Round = 1;
                     Channel.ActiveEvent = this;
                     string msg = $"The event **{Name}** started!\n";
-                    foreach (ulong curUser in users)
+                    foreach (ulong curUser in Users)
                     {
-                        SocketUser socketUser = Data.client.GetUser(Data.GetUser(curUser).Id);
+                        SocketUser socketUser = Data.Client.GetUser(Data.GetUser(curUser).Id);
                         msg += socketUser.Mention + " ";
                     }
 
                     return Log(msg);
                 }
-                else
-                {
-                    return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Name} ({Channel.ActiveEvent.Id}).\nDM: {Channel.ActiveEvent.Dm.Username}");
-                }
+                return Log($"There is already an event running in this channel: {Channel.ActiveEvent.Name} ({Channel.ActiveEvent.Id}).\nDM: {Channel.ActiveEvent.Dm.Username}");
             }
-            else
-            {
-                return Log("You do not have permission to start that event.");
-            }
+            return Log("You do not have permission to start that event.");
         }
 
         public string Status()
@@ -124,15 +125,15 @@ namespace BattleBot
             status += $"\nStarted: {Round > 0}";
             status += "\nDM: " + Dm.Username;
             status += "\nAdmins:";
-            foreach (ulong userID in admins)
+            foreach (ulong userId in _admins)
             {
-                User user = Data.GetUser(userID);
+                User user = Data.GetUser(userId);
                 status += "\n" + user.Username;
             }
             status += "\n\nUsers:";
-            foreach (ulong userID in users)
+            foreach (ulong userId in Users)
             {
-                User user = Data.GetUser(userID);
+                User user = Data.GetUser(userId);
                 status += "\n" + user.Username;
             }
 
@@ -145,17 +146,14 @@ namespace BattleBot
         {
             Idle = DateTimeOffset.Now;
 
-            if (!users.Contains(user.Id))
+            if (!Users.Contains(user.Id))
             {
-                users.Add(user.Id);
+                Users.Add(user.Id);
                 user.SetActiveEvent(Channel.Id, this);
 
                 return Log($"{user.Username} has joined {Name}.");
             }
-            else
-            {
-                return Log("You have already joined this event.");
-            }
+            return Log("You have already joined this event.");
         }
 
         public string Join(Character character, User user)
@@ -198,7 +196,7 @@ namespace BattleBot
             else
                 joiner.Actionpoints = Ruleset.Actionpoints;
 
-            foreach (Character curCharacter in characters)
+            foreach (Character curCharacter in Characters)
             {
                 if (curCharacter.aliases.Overlaps(joiner.aliases))
                 {
@@ -208,22 +206,22 @@ namespace BattleBot
                     {
                         joiner.aliases.Remove(alias);
 
-                        if (duplicates.ContainsKey(alias))
+                        if (_duplicates.ContainsKey(alias))
                         {
-                            joiner.aliases.Add(alias + "#" + duplicates[alias]++);
+                            joiner.aliases.Add(alias + "#" + _duplicates[alias]++);
                         } else
                         {
-                            duplicates.Add(alias, 3);
+                            _duplicates.Add(alias, 3);
                             joiner.aliases.Add(alias + "#2");
                         }
                     }
                 }
             }
 
-            if (teams.Count > 0)
+            if (_teams.Count > 0)
             {
                 bool found = false;
-                foreach (Team curTeam in teams)
+                foreach (Team curTeam in _teams)
                 {
                     if (curTeam.Name.Equals("Unassigned"))
                     {
@@ -237,12 +235,14 @@ namespace BattleBot
                 {
                     Team unassigned = new Team("Unassigned");
                     unassigned.members.Add(joiner);
-                    teams.Add(unassigned);
+                    _teams.Add(unassigned);
                 }
 
             }
 
-            characters.Add(joiner);
+            string result = Ruleset.AddCharacter(joiner);
+
+            Characters.Add(joiner);
 
             string newAlias = "";
             foreach (string curAlias in joiner.aliases)
@@ -250,8 +250,16 @@ namespace BattleBot
                 newAlias = curAlias;
                 break;
             }
+            if (result == "")
+            {
+                result += $"{joiner.Name} ({newAlias}) was added to {Name}.";
+            }
+            else
+            {
+                result += $"\n{joiner.Name} ({newAlias}) was added to {Name}.";
+            }
 
-            return Log($"{joiner.Name} ({newAlias}) was added to {Name}.");
+            return Log(result);
         }
 
         public string RemoveCharacter(Character character)
@@ -259,14 +267,14 @@ namespace BattleBot
             Idle = DateTimeOffset.Now;
 
             bool done = false;
-            foreach (Team team in teams)
+            foreach (Team team in _teams)
             {
                 foreach (Character curChar in team.members)
                 {
                     if (curChar.Name.Equals(character.Name))
                     {
                         team.members.Remove(curChar);
-                        if (team.members.Count == 0) teams.Remove(team);
+                        if (team.members.Count == 0) _teams.Remove(team);
                         done = true;
                         break;
                     }
@@ -274,11 +282,11 @@ namespace BattleBot
                 if (done) break;
             }
 
-            foreach (Character curChar in characters)
+            foreach (Character curChar in Characters)
             {
                 if (curChar.Name.Equals(character.Name))
                 {
-                    characters.Remove(curChar);
+                    Characters.Remove(curChar);
                     return Log($"{character.Name} was removed from {Name}.");
                 }
             }
@@ -290,18 +298,18 @@ namespace BattleBot
         {
             Idle = DateTimeOffset.Now;
 
-            if (teams.Count == 0 && characters.Count > 0)
+            if (_teams.Count == 0 && Characters.Count > 0)
             {
                 Team unassigned = new Team("Unassigned");
-                foreach (Character character in characters)
+                foreach (Character character in Characters)
                 {
                     unassigned.members.Add(character);
                 }
-                teams.Add(unassigned);
+                _teams.Add(unassigned);
             }
 
             Team team = new Team(name);
-            teams.Add(team);
+            _teams.Add(team);
 
             return Log($"The team {name} was added to {Name}.");
         }
@@ -312,9 +320,9 @@ namespace BattleBot
 
             Team unassigned = null;
 
-            if (teams.Count > 1)
+            if (_teams.Count > 1)
             {
-                foreach (Team curTeam in teams)
+                foreach (Team curTeam in _teams)
                 {
                     if (curTeam.Name.Equals("Unassigned"))
                     {
@@ -325,24 +333,27 @@ namespace BattleBot
                 if (unassigned == null)
                 {
                     unassigned = new Team("Unassigned");
-                    teams.Add(unassigned);
+                    _teams.Add(unassigned);
 
-                } else if (teams.Count > 2)
+                } else if (_teams.Count < 2)
                 {
-                    teams.Remove(unassigned);
+                    _teams.Remove(unassigned);
                 }
             }
 
-            foreach (Team curTeam in teams)
+            foreach (Team curTeam in _teams)
             {
                 if (curTeam.Name.Equals(team.Name))
                 {
-                    foreach (Character curChar in curTeam.members)
+                    if (unassigned != null)
                     {
-                        unassigned.members.Add(curChar);
+                        foreach (Character curChar in curTeam.members)
+                        {
+                            unassigned.members.Add(curChar);
+                        }
                     }
 
-                    teams.Remove(curTeam);
+                    _teams.Remove(curTeam);
                     return Log($"{team.Name} was removed from {Name}.");
                 }
             }
@@ -355,7 +366,7 @@ namespace BattleBot
             Idle = DateTimeOffset.Now;
             string result = "";
 
-            foreach (Team curTeam in teams)
+            foreach (Team curTeam in _teams)
             {
                 if (curTeam.members.Contains(character))
                 {
@@ -386,10 +397,34 @@ namespace BattleBot
             return Log($"{character.Name}'s health is now {health}.");
         }
 
+        public string SetAp(Character character, int ap)
+        {
+            Idle = DateTimeOffset.Now;
+            character.Actionpoints = ap;
+
+            return Log($"{character.Name} has now {ap} action points.");
+        }
+
+        public string SetWard(Character character, int health, int duration)
+        {
+            Idle = DateTimeOffset.Now;
+            character.Ward(new Ward(health, duration));
+
+            return Log($"{character.Name} has now a {health} health, {duration} rounds ward.");
+        }
+
         public string Attack(Character character, Character[] targets)
         {
             Idle = DateTimeOffset.Now;
             string result = Ruleset.Attack(character, targets);
+
+            return Log(CheckRound(result));
+        }
+
+        public string Ranged(Character character, Character[] targets)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.Ranged(character, targets);
 
             return Log(CheckRound(result));
         }
@@ -410,6 +445,30 @@ namespace BattleBot
             return Log(CheckRound(result));
         }
 
+        public string Block(Character character)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.Block(character);
+
+            return Log(CheckRound(result));
+        }
+
+        public string PotionHealth(Character character)
+        {
+            Idle = DateTimeOffset.Now;
+            string result = Ruleset.PotionHealth(character);
+
+            return Log(CheckRound(result));
+        }
+
+        public string Pass(Character character)
+        {
+            Idle = DateTimeOffset.Now;
+            character.Actionpoints = 0;
+
+            return Log(CheckRound($"{character.Name} passed the turn."));
+        }
+
         // Utilities
 
         public bool HasStarted()
@@ -419,7 +478,7 @@ namespace BattleBot
 
         public string Log(string msg)
         {
-            log += msg + "\n";
+            _log += msg + "\n";
             Console.WriteLine(msg);
             return msg;
         }
@@ -434,10 +493,10 @@ namespace BattleBot
                 return sum;
             }
 
-            if (RemainingAP() != 0)
+            if (RemainingAp() != 0)
                 return result;
 
-            foreach (Character character in characters)
+            foreach (Character character in Characters)
             {
                 character.UpdateWards();
                 if (character.Health > 0) character.Actionpoints = Ruleset.Actionpoints;
@@ -448,10 +507,10 @@ namespace BattleBot
             return status;
         }
 
-        public int RemainingAP()
+        public int RemainingAp()
         {
             int ap = 0;
-            foreach (Character character in characters)
+            foreach (Character character in Characters)
             {
                 if (!character.Npc) ap += character.Actionpoints;
             }
@@ -461,11 +520,11 @@ namespace BattleBot
 
         public bool CheckVictoryCondition(string result, out string sum)
         {
-            if (teams.Count > 0)
+            if (_teams.Count > 0)
             {
                 List<Team> remaining = new List<Team>();
 
-                foreach (Team team in teams)
+                foreach (Team team in _teams)
                 {
                     if (!team.IsDead())
                     {
@@ -487,9 +546,9 @@ namespace BattleBot
         {
             string status = "";
 
-            if (teams.Count > 0)
+            if (_teams.Count > 0)
             {
-                foreach (Team team in teams)
+                foreach (Team team in _teams)
                 {
                     if (team.members.Count > 0)
                     {
@@ -509,14 +568,14 @@ namespace BattleBot
         {
             string status = "\nCharacters:";
 
-            foreach (Character character in characters)
+            foreach (Character character in Characters)
             {
                 if (!character.Npc) status += "\n" + character.GetStatus();
             }
 
             status += "\n\nNPCs:";
 
-            foreach (Character character in characters)
+            foreach (Character character in Characters)
             {
                 if (character.Npc) status += "\n" + character.GetStatus();
             }
@@ -527,7 +586,7 @@ namespace BattleBot
         public string Finish()
         {
             string path = Id + ".txt";
-            System.IO.File.WriteAllText(path, log);
+            File.WriteAllText(path, _log);
             if (!Channel.events.ContainsKey(Id))
             {
                 Console.WriteLine("Missing: " + Id);
@@ -538,13 +597,14 @@ namespace BattleBot
                 }
             }
             Channel.events.Remove(Id);
+            Channel.ActiveEvent = null;
 
-            foreach (ulong curUser in users)
+            foreach (ulong curUser in Users)
             {
                 User user = Data.GetUser(curUser);
-                if (user != null && user.activeEvents.TryGetValue(Channel.Id, out Event curEvent) && curEvent.Id == Id)
+                if (user != null && user.ActiveEvents.TryGetValue(Channel.Id, out Event curEvent) && curEvent.Id == Id)
                 {
-                    user.activeEvents.Remove(Channel.Id);
+                    user.ActiveEvents.Remove(Channel.Id);
                 }
             }
 
@@ -554,7 +614,7 @@ namespace BattleBot
         public Character GetCharacter(string alias)
         {
             alias = alias.ToLower();
-            foreach (Character character in characters)
+            foreach (Character character in Characters)
             {
                 foreach (string charAlias in character.aliases)
                 {
@@ -569,7 +629,7 @@ namespace BattleBot
         public Team GetTeam(string alias)
         {
             alias = alias.ToLower();
-            foreach (Team team in teams)
+            foreach (Team team in _teams)
             {
                 foreach (string teamAlias in team.aliases)
                 {

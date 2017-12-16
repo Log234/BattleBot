@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Diagnostics;
 
 namespace BattleBot
 {
     public static class Dice
     {
-        enum Operator { Add, Subtract, Multiply, Divide };
+        enum Operator { Add, Subtract, Multiply, Divide }
 
 
         public static string Flip(string author)
@@ -16,11 +15,8 @@ namespace BattleBot
             if (rdm.Next(2) == 0)
             {
                 return $"{author}'s coin landed **heads** up.";
-            } else
-            {
-                return $"{author}'s coin landed **tail** up.";
             }
-
+            return $"{author}'s coin landed **tail** up.";
         }
 
         public static string Roll(string author, string cmd)
@@ -50,14 +46,11 @@ namespace BattleBot
                         if (curExpression == null)
                         {
                             curExpression = newExpression;
-                            if (root == null)
-                            {
-                                root = newExpression;
-                            }
+                            root = newExpression;
                         }
                         else if (curExpression is NumExpression)
                         {
-                            (curExpression as NumExpression).right = newExpression;
+                            (curExpression as NumExpression).Right = newExpression;
                         }
                         break;
                     case 'd':
@@ -74,7 +67,7 @@ namespace BattleBot
                         }
                         else if (curExpression is NumExpression)
                         {
-                            (curExpression as NumExpression).right = rndExpression;
+                            (curExpression as NumExpression).Right = rndExpression;
                         }
                         break;
                     case '+':
@@ -100,30 +93,31 @@ namespace BattleBot
 
                         if (curExpression is RdmVal || curExpression is IntVal)
                         {
-                            intExp.left = curExpression;
+                            Debug.Assert(intExp != null, nameof(intExp) + " != null");
+                            intExp.Left = curExpression;
                             curExpression = intExp;
                             root = intExp;
                         }
-                        else
+                        else if (curExpression != null && intExp != null)
                         {
-                            if ((curExpression as NumExpression).opr == Operator.Add || (curExpression as NumExpression).opr == Operator.Subtract)
+                            if (((NumExpression)curExpression).opr == Operator.Add || ((NumExpression)curExpression).opr == Operator.Subtract)
                             {
                                 if (intExp.opr == Operator.Add || intExp.opr == Operator.Subtract)
                                 {
-                                    intExp.left = root;
+                                    intExp.Left = root;
                                     root = intExp;
                                     curExpression = intExp;
                                 }
                                 else
                                 {
-                                    intExp.left = (curExpression as NumExpression).right;
-                                    (curExpression as NumExpression).right = intExp;
+                                    intExp.Left = (curExpression as NumExpression).Right;
+                                    ((NumExpression)curExpression).Right = intExp;
                                     curExpression = intExp;
                                 }
                             }
                             else
                             {
-                                intExp.left = root;
+                                intExp.Left = root;
                                 root = intExp;
                                 curExpression = intExp;
                             }
@@ -134,9 +128,18 @@ namespace BattleBot
                 }
             }
 
-            double sum = root.Calculate();
+            if (root != null)
+            {
+                double sum = root.Calculate();
 
-            return $"{author} rolled **{root.GetResult()}**, total: **{sum}**.";
+                if (root is NumExpression)
+                {
+                    return $"{author} rolled **{root.GetResult()}**, total: **{sum}**.";
+                }
+
+                return $"{author} rolled **{root.GetResult()}**.";
+            }
+            return "Not a valid expression.";
         }
 
         private static int ReadInt(string cmd, int i, out int index)
@@ -159,11 +162,11 @@ namespace BattleBot
                         number += cmd[i];
                         break;
                     default:
-                        index = i-1;
+                        index = i - 1;
                         return int.Parse(number);
                 }
             }
-            index = i-1;
+            index = i - 1;
             return int.Parse(number);
         }
 
@@ -201,7 +204,7 @@ namespace BattleBot
 
         class RdmVal : Expression
         {
-            int result = 0;
+            private int _result;
             int diceSize;
 
             public RdmVal(int diceSize)
@@ -211,16 +214,13 @@ namespace BattleBot
 
             public override double Calculate()
             {
-                if (result == 0)
+                if (_result == 0)
                 {
                     Random rng = new Random();
-                    result = rng.Next(1, diceSize);
-                    return result;
+                    _result = rng.Next(1, diceSize);
+                    return _result;
                 }
-                else
-                {
-                    return result;
-                }
+                return _result;
             }
 
             public override string GetExpression()
@@ -230,17 +230,17 @@ namespace BattleBot
 
             public override string GetResult()
             {
-                return "" + result;
+                return "" + _result;
             }
         }
 
         class NumExpression : Expression
         {
-            double result = 0;
+            private double _result;
             public Operator opr;
 
-            public Expression left;
-            public Expression right;
+            public Expression Left;
+            public Expression Right;
 
             public NumExpression(Operator opr)
             {
@@ -249,32 +249,27 @@ namespace BattleBot
 
             public override double Calculate()
             {
-                if (result == 0)
+                if (_result <= 0)
                 {
                     switch (opr)
                     {
                         case Operator.Add:
-                            result = left.Calculate() + right.Calculate();
+                            _result = Left.Calculate() + Right.Calculate();
                             break;
                         case Operator.Subtract:
-                            result = left.Calculate() - right.Calculate();
+                            _result = Left.Calculate() - Right.Calculate();
                             break;
                         case Operator.Multiply:
-                            result = left.Calculate() * right.Calculate();
+                            _result = Left.Calculate() * Right.Calculate();
                             break;
                         case Operator.Divide:
-                            result = left.Calculate() / (double) right.Calculate();
-                            break;
-                        default:
+                            _result = Left.Calculate() / Right.Calculate();
                             break;
                     }
-                    return result;
+                    return _result;
 
                 }
-                else
-                {
-                    return result;
-                }
+                return _result;
             }
 
             public override string GetExpression()
@@ -282,13 +277,13 @@ namespace BattleBot
                 switch (opr)
                 {
                     case Operator.Add:
-                        return left.GetExpression() + " + " + right.GetExpression();
+                        return Left.GetExpression() + " + " + Right.GetExpression();
                     case Operator.Subtract:
-                        return left.GetExpression() + " - " + right.GetExpression();
+                        return Left.GetExpression() + " - " + Right.GetExpression();
                     case Operator.Multiply:
-                        return left.GetExpression() + " * " + right.GetExpression();
+                        return Left.GetExpression() + " * " + Right.GetExpression();
                     case Operator.Divide:
-                        return left.GetExpression() + " / " + right.GetExpression();
+                        return Left.GetExpression() + " / " + Right.GetExpression();
                     default:
                         return "";
                 }
@@ -299,13 +294,13 @@ namespace BattleBot
                 switch (opr)
                 {
                     case Operator.Add:
-                        return left.GetResult() + " + " + right.GetResult();
+                        return Left.GetResult() + " + " + Right.GetResult();
                     case Operator.Subtract:
-                        return left.GetResult() + " - " + right.GetResult();
+                        return Left.GetResult() + " - " + Right.GetResult();
                     case Operator.Multiply:
-                        return left.GetResult() + " * " + right.GetResult();
+                        return Left.GetResult() + " * " + Right.GetResult();
                     case Operator.Divide:
-                        return left.GetResult() + " / " + right.GetResult();
+                        return Left.GetResult() + " / " + Right.GetResult();
                     default:
                         return "";
                 }

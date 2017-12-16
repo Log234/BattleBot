@@ -1,19 +1,20 @@
-﻿using Discord.Commands;
-using Discord.WebSocket;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
 
 namespace BattleBot
 {
     class Data
     {
-        public static DiscordSocketClient client;
-        private static Storage storage = new Storage();
+        public static DiscordSocketClient Client;
+        private static Storage _storage = new Storage();
 
         [Serializable]
         class Storage
@@ -25,12 +26,12 @@ namespace BattleBot
 
         static Storage GetStorage
         {
-            get { return storage; }
+            get { return _storage; }
         }
 
         public static Event GetEvent(ulong channelId, string eventId)
         {
-            if (!storage.channels.TryGetValue(channelId, out Channel channel))
+            if (!_storage.channels.TryGetValue(channelId, out Channel channel))
             {
                 return null;
             }
@@ -44,16 +45,16 @@ namespace BattleBot
         }
 
         // Get event based on context
-        public static Event GetEvent(SocketCommandContext Context, string eventId = "Active")
+        public static Event GetEvent(SocketCommandContext context, string eventId = "Active")
         {
             Event curEvent;
             if (eventId.Equals("Active"))
             {
-                curEvent = storage.users[Context.Message.Author.Id]?.activeEvents[Context.Channel.Id];
+                curEvent = _storage.users[context.Message.Author.Id]?.ActiveEvents[context.Channel.Id];
             }
             else
             {
-                if (storage.channels.TryGetValue(Context.Channel.Id, out Channel channel) && channel.events.TryGetValue(eventId, out Event newEvent))
+                if (_storage.channels.TryGetValue(context.Channel.Id, out Channel channel) && channel.events.TryGetValue(eventId, out Event newEvent))
                 {
                     curEvent = newEvent;
                 }
@@ -67,10 +68,10 @@ namespace BattleBot
         // Gets or creates a guild based on a
         public static Guild GetGuild(SocketGuild guild)
         {
-            if (!storage.guilds.TryGetValue(guild.Id, out Guild curGuild))
+            if (!_storage.guilds.TryGetValue(guild.Id, out Guild curGuild))
             {
                 curGuild = new Guild(guild);
-                storage.guilds[guild.Id] = curGuild;
+                _storage.guilds[guild.Id] = curGuild;
             }
 
             return curGuild;
@@ -79,7 +80,7 @@ namespace BattleBot
         // Gets or creates a channel based on a SocketChannel
         public static Channel GetChannel(SocketChannel channel)
         {
-            if (!storage.channels.TryGetValue(channel.Id, out Channel curChannel))
+            if (!_storage.channels.TryGetValue(channel.Id, out Channel curChannel))
             {
                 if (channel is SocketGuildChannel)
                 {
@@ -89,7 +90,7 @@ namespace BattleBot
                 {
                     curChannel = new Channel(channel);
                 }
-                storage.channels[channel.Id] = curChannel;
+                _storage.channels[channel.Id] = curChannel;
             }
 
             return curChannel;
@@ -98,10 +99,10 @@ namespace BattleBot
         // Gets or creates a user based on a SocketUser
         public static User GetUser(SocketUser user)
         {
-            if (!storage.users.TryGetValue(user.Id, out User curUser))
+            if (!_storage.users.TryGetValue(user.Id, out User curUser))
             {
                 curUser = new User(user);
-                storage.users.Add(user.Id, curUser);
+                _storage.users.Add(user.Id, curUser);
             }
 
             return curUser;
@@ -110,7 +111,7 @@ namespace BattleBot
         // Gets or creates a user based on a SocketUser
         public static User GetUser(ulong userId)
         {
-            if (!storage.users.TryGetValue(userId, out User curUser))
+            if (!_storage.users.TryGetValue(userId, out User curUser))
             {
                 return null;
             }
@@ -121,8 +122,8 @@ namespace BattleBot
         // Message all active event DMs
         public static async Task MessageActiveDMs(string msg)
         {
-            SocketUser log = client.GetUser(174426714120781824);
-            Discord.IDMChannel dm = await log.GetOrCreateDMChannelAsync();
+            SocketUser log = Client.GetUser(174426714120781824);
+            IDMChannel dm = await log.GetOrCreateDMChannelAsync();
             await dm.SendMessageAsync(msg);
             Console.WriteLine(msg);
 
@@ -131,8 +132,8 @@ namespace BattleBot
             {
                 if (channel.ActiveEvent != null && (DateTimeOffset.Now - channel.ActiveEvent.Idle).TotalMinutes < 10)
                 {
-                    SocketUser user = client.GetUser(dm.Id);
-                    SocketChannel socketChannel = client.GetChannel(channel.Id);
+                    SocketUser user = Client.GetUser(dm.Id);
+                    SocketChannel socketChannel = Client.GetChannel(channel.Id);
                     string mention = user.Mention;
                     (socketChannel as SocketTextChannel)?.SendMessageAsync(mention + "\n" + msg);
                 }
@@ -153,6 +154,7 @@ namespace BattleBot
         // Prepare for update
         public static void Update()
         {
+#pragma warning disable 4014
             MessageActiveDMs("I will be taken offline in 15 minutes. " + Emotes.Wut + " The state of your active event will be saved, but it may take a few minutes before I come back. ");
             Thread.Sleep(600000);
             MessageActiveDMs("I will be taken offline in 5 minutes.");
@@ -160,6 +162,7 @@ namespace BattleBot
             MessageActiveDMs("I will be taken offline in 1 minute.");
             Thread.Sleep(60000);
             MessageActiveDMs("Going offline, see you soon! " + Emotes.Heart);
+#pragma warning restore 4014
             Exit();
         }
 
@@ -169,7 +172,7 @@ namespace BattleBot
             Storage storage = GetStorage;
             using (Stream stream = File.Open("Data.dat", FileMode.Create))
             {
-                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                var binaryFormatter = new BinaryFormatter();
                 binaryFormatter.Serialize(stream, storage);
             }
         }
@@ -180,7 +183,7 @@ namespace BattleBot
             Storage storage = GetStorage;
             using (Stream stream = File.Open("Data.dat", FileMode.Create))
             {
-                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+                var binaryFormatter = new BinaryFormatter();
                 binaryFormatter.Serialize(stream, storage);
             }
         }
@@ -191,8 +194,8 @@ namespace BattleBot
             Directory.CreateDirectory("Backup");
             using (Stream stream = File.Open($"Backup/Data-{Utilities.GetDateTime()}.dat", FileMode.Create))
             {
-                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-                binaryFormatter.Serialize(stream, storage);
+                var binaryFormatter = new BinaryFormatter();
+                binaryFormatter.Serialize(stream, _storage);
             }
 
         }
@@ -203,8 +206,8 @@ namespace BattleBot
             Directory.CreateDirectory("Backup");
             using (Stream stream = File.Open($"Backup/Data-{Utilities.GetDateTime()}.dat", FileMode.Create))
             {
-                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-                binaryFormatter.Serialize(stream, storage);
+                var binaryFormatter = new BinaryFormatter();
+                binaryFormatter.Serialize(stream, _storage);
             }
 
         }
@@ -227,8 +230,8 @@ namespace BattleBot
             Console.WriteLine("Loading Data.dat");
             using (Stream stream = File.Open("Data.dat", FileMode.Open))
             {
-                var binaryFormatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-                storage =  (Storage)binaryFormatter.Deserialize(stream);
+                var binaryFormatter = new BinaryFormatter();
+                _storage =  (Storage)binaryFormatter.Deserialize(stream);
             }
         }
 
@@ -238,7 +241,7 @@ namespace BattleBot
             List<ulong> remChannel = new List<ulong>();
             Dictionary<Channel, string> remEvent = new Dictionary<Channel, string>();
 
-            foreach (KeyValuePair<ulong, Channel> channel in storage.channels)
+            foreach (KeyValuePair<ulong, Channel> channel in _storage.channels)
             {
                 foreach (KeyValuePair<String, Event> eventPair in channel.Value.events)
                 {
@@ -258,7 +261,7 @@ namespace BattleBot
 
             foreach (ulong channel in remChannel)
             {
-                storage.channels.Remove(channel);
+                _storage.channels.Remove(channel);
             }
 
             foreach (KeyValuePair<Channel, string> curEvent in remEvent)
@@ -270,7 +273,7 @@ namespace BattleBot
         // Reconnect
         public static async Task OnReconnect()
         {
-            await Data.MessageActiveDMs("Beep Boop!\nI'm back! " + Emotes.Happy);
+            await MessageActiveDMs("Beep Boop!\nI'm back! " + Emotes.Happy);
         }
     }
 
@@ -281,10 +284,9 @@ namespace BattleBot
         public string Tag { get; }
         public string Username { get; }
         public string Discriminator { get; }
-        public DateTimeOffset Idle { get; set; }
-        public HashSet<Character> characters = new HashSet<Character>();
-        public Dictionary<ulong, Event> activeEvents = new Dictionary<ulong, Event>();
-        private int eventID = 0;
+        private readonly HashSet<Character> _characters = new HashSet<Character>();
+        public Dictionary<ulong, Event> ActiveEvents = new Dictionary<ulong, Event>();
+        private int _eventId;
 
         public User(SocketUser user)
         {
@@ -295,16 +297,15 @@ namespace BattleBot
             Console.WriteLine("User created: " + user.Username);
         }
 
-        public int getEventID()
+        public int GetEventId()
         {
-            Idle = DateTimeOffset.Now;
-            return eventID++;
+            return _eventId++;
         }
 
         public Character GetCharacter(string alias)
         {
             alias = alias.ToLower();
-            foreach (Character character in characters)
+            foreach (Character character in _characters)
             {
                 foreach (string charAlias in character.aliases)
                 {
@@ -318,9 +319,9 @@ namespace BattleBot
 
         public void SetActiveEvent(ulong channelId, Event curEvent)
         {
-            if (!activeEvents.TryAdd(channelId, curEvent))
+            if (!ActiveEvents.TryAdd(channelId, curEvent))
             {
-                activeEvents[channelId] = curEvent;
+                ActiveEvents[channelId] = curEvent;
             }
         }
     }
@@ -328,14 +329,12 @@ namespace BattleBot
     [Serializable]
     class Guild
     {
-        public ulong Id { get; }
         public DateTimeOffset Idle { get; set; }
         private HashSet<User> admins = new HashSet<User>();
-        private Dictionary<ulong, Channel> channels = new Dictionary<ulong, Channel>();
+        private Dictionary<ulong, Channel> _channels = new Dictionary<ulong, Channel>();
 
         public Guild(SocketGuild guild)
         {
-            Id = guild.Id;
             Console.WriteLine("Guild created: " + guild.Name);
         }
 
@@ -390,7 +389,7 @@ namespace BattleBot
 
         public string GetEventName(User dm)
         {
-            return dm.Username + "#" + dm.getEventID();
+            return dm.Username + "#" + dm.GetEventId();
         }
 
         // Admins
@@ -471,11 +470,11 @@ namespace BattleBot
 
         public Team(string name)
         {
-            this.Name = name;
-            this.aliases.Add(name.ToLower());
+            Name = name;
+            aliases.Add(name.ToLower());
             if (name.Contains(" "))
             {
-                this.aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
+                aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
             }
         }
 
@@ -509,40 +508,43 @@ namespace BattleBot
         public string Name { get; }
         public HashSet<string> aliases = new HashSet<string>();
         public bool Npc { get; set; }
+        public bool Meele { get; set; }
+        public bool Ranged { get; set; }
         public List<User> admins = new List<User>();
         public List<Ward> wards = new List<Ward>();
         public int Health { get; set; }
         public int Maxhealth { get; set; }
         public int Actionpoints { get; set; }
+        public int HealthPotions { get; set; }
 
         public Character(string name, int health, int maxhealth, User admin)
         {
-            this.Name = name;
+            Name = name;
             if (name.Contains(" "))
             {
-                this.aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
+                aliases.Add(name.Substring(0, name.IndexOf(" ", StringComparison.Ordinal)).ToLower());
             } else
             {
-                this.aliases.Add(name.ToLower());
+                aliases.Add(name.ToLower());
             }
-            this.Health = health;
-            this.Maxhealth = maxhealth;
-            this.admins.Add(admin);
+            Health = health;
+            Maxhealth = maxhealth;
+            admins.Add(admin);
         }
 
-        public Character(string name, HashSet<string> aliases, bool npc, int health, int maxhealth, List<User> admin)
+        public Character(string name, HashSet<string> aliases, bool npc, bool meele, bool ranged, List<User> admin, int health, int maxhealth)
         {
-            this.Name = name;
+            Name = name;
             this.aliases = new HashSet<string>(aliases);
-            this.Npc = npc;
-            this.Health = health;
-            this.Maxhealth = maxhealth;
-            this.admins = new List<User>(admin);
+            Npc = npc;
+            Health = health;
+            Maxhealth = maxhealth;
+            admins = new List<User>(admin);
         }
 
         public Character CopyOf()
         {
-            return new Character(Name, aliases, Npc, Health, Maxhealth, admins);
+            return new Character(Name, aliases, Npc, Meele, Ranged, admins, Health, Maxhealth);
         }
 
         public void TakeDamage(int amount)
@@ -598,7 +600,20 @@ namespace BattleBot
                 status += "⛨";
             }
 
+            if (HealthPotions > 0)
+            {
+                status += $" {HealthPotions}x{Emotes.HealthPotion}";
+            }
+
             status += $" - {Actionpoints} AP";
+
+            if (Meele)
+            {
+                status += " " + Emotes.Meele;
+            }
+
+            if (Ranged)
+                status += " " + Emotes.Ranged;
 
             return status;
         }
@@ -640,8 +655,8 @@ namespace BattleBot
 
         public Ward(int shield, int duration)
         {
-            this.Shield = shield;
-            this.Duration = duration;
+            Shield = shield;
+            Duration = duration;
         }
 
         public int TakeDamage(int amount)

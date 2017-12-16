@@ -1,16 +1,15 @@
 ﻿using System;
+using System.IO;
+using System.Reflection;
+using System.Threading.Tasks;
+using System.Timers;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BattleBot
 {
-    using System;
-    using System.Threading.Tasks;
-    using System.Reflection;
-    using Discord;
-    using Discord.WebSocket;
-    using Discord.Commands;
-    using Microsoft.Extensions.DependencyInjection;
-    using System.Timers;
-
     public class Program
     {
         public static bool exit = false;
@@ -42,7 +41,7 @@ namespace BattleBot
             });
             _commands.Log += Log;
 
-            string token = System.IO.File.ReadAllText(@"C:\Secrets\BattleBot.txt");
+            string token = File.ReadAllText(@"C:\Secrets\BattleBot.txt");
 
             _services = new ServiceCollection()
                 .AddSingleton(_client)
@@ -54,8 +53,8 @@ namespace BattleBot
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
-            Data.client = _client;
-            Data.client.Ready += Data.OnReconnect;
+            Data.Client = _client;
+            Data.Client.Ready += Data.OnReconnect;
 
             save.AutoReset = true;
             save.Elapsed += Data.Save;
