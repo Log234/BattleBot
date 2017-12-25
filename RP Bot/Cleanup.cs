@@ -2,7 +2,7 @@
 
 namespace BattleBot
 {
-    class Cleanup
+    internal class Cleanup
     {
         private static Timer timer;
         public static int eventTimeout;

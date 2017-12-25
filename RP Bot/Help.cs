@@ -17,6 +17,73 @@ namespace BattleBot
                 "Type `!help <command>` to learn more about the different commands:\nfeedback\nroll\nflipcoin\nchannel\nevent\nattack\nheal\nward\nblock\npotion");
         }
 
+        // Guild help
+        [Group("guild")]
+        public class GuildModule : ModuleBase<SocketCommandContext>
+        {
+            [Command]
+            [Summary("Guild help")]
+            public async Task GuildHelp()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync(
+                    "`!guild <command>` allows you to moderate a guild with these commands:\nguild status\nguild add <command>\nguild remove <command>");
+            }
+
+            [Command("status")]
+            [Summary("Prints the status of a guild.")]
+            public async Task StatusGuild()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync(
+                    "`!guild status` prints out information about the current guild, such as admins, admin roles, channels and events.");
+            }
+
+            [Group("add")]
+            public class AddModule : ModuleBase<SocketCommandContext>
+            {
+                [Command]
+                [Summary("Guild add help")]
+                public async Task GuildHelp()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!guild add <command>` allows you to add things such as admins and admin roles to a guild with these commands:\nguild add adminrole");
+                }
+
+                [Command("adminrole")]
+                [Summary("Adds an admin role.")]
+                public async Task AddAdminrole()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!guild add adminrole <role>` allows you to add roles from your guild that will be treated as admins of BattleBot in this guild.");
+                }
+            }
+
+            [Group("remove")]
+            public class RemoveModule : ModuleBase<SocketCommandContext>
+            {
+                [Command]
+                [Summary("Guild remove help")]
+                public async Task GuildHelp()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!guild remove <command>` allows you to remove things such as admins and admin roles from a guild with these commands:\nguild remove adminrole");
+                }
+
+                [Command("adminrole")]
+                [Summary("Removes an admin role.")]
+                public async Task RemoveAdminrole()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!guild add adminrole <role>` allows you to remove roles that was treated as admins of BattleBot in this guild.");
+                }
+            }
+        }
+
         // Channel
         [Group("channel")]
         public class ChannelModule : ModuleBase<SocketCommandContext>
@@ -99,7 +166,16 @@ namespace BattleBot
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                 await channel.SendMessageAsync(
-                    "`!event status [event ID]` I'll read out some information about the event, such as the name, whether it has started and who have joined it. :books:");
+                    "`!event status [event ID]` I'll list all characters and how they are doing. :books:");
+            }
+
+            [Command("fullstatus")]
+            [Summary("Event status help")]
+            public async Task FullStatus()
+            {
+                IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                await channel.SendMessageAsync(
+                    "`!event fullstatus [event ID]` I'll read out some information about the event, such as the name, whether it has started and who have joined it. :books:");
             }
 
 
@@ -261,7 +337,7 @@ namespace BattleBot
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
-                        "`!event set <command>` allows you change details for this event:\nevent set ruleset\nevent set npc\nevent set meele\nevent set ranged\nevent set team\nevent set maxhealth\nevent set health\nevent set ward\nevent set ap\nevent set basedamage\nevent set baseheal");
+                        "`!event set <command>` allows you change details for this event:\nevent set ruleset\nevent set npc\nevent set melee\nevent set ranged\nevent set team\nevent set maxhealth\nevent set health\nevent set ward\nevent set ap\nevent set basedamage\nevent set baseheal\nevent set potion <command>");
                 }
 
                 [Command("ruleset")]
@@ -280,16 +356,15 @@ namespace BattleBot
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
                         "`!event set npc <character alias> <true/false> [event ID]` set a character to be a normal character or an npc.");
-
                 }
 
-                [Command("meele")]
+                [Command("melee")]
                 [Summary("Event set ranged help")]
-                public async Task SetMeele()
+                public async Task Setmelee()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
-                        "`!event set meele <character alias> <true/false> [event ID]` enables or disables meele attacks for a character.");
+                        "`!event set melee <character alias> <true/false> [event ID]` enables or disables melee attacks for a character.");
                 }
 
                 [Command("ranged")]
@@ -307,7 +382,16 @@ namespace BattleBot
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
-                        "`!event set team <character alias> <team alias>` assigns the character to the given team, a character can only be in one team at a time.");
+                        "`!event set team <team alias> <character alias 1> ... <character alias n>` assigns the characters to the given team, a character can only be in one team at a time.");
+                }
+
+                [Command("turn")]
+                [Summary("Event set turn help")]
+                public async Task SetTurn()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event set turn <character alias>` gives the turn to the given character.");
                 }
 
                 [Command("maxhealth")]
@@ -363,6 +447,30 @@ namespace BattleBot
                     await channel.SendMessageAsync(
                         "`!event set baseheal <health>` sets the events's base heal to the given value.");
                 }
+                
+                [Group("potion")]
+                [Summary("All commands for setting specific properties of the event.")]
+                public class EventDisablePotionModule : ModuleBase<SocketCommandContext>
+                {
+                    [Command]
+                    [Summary("Event set potion help")]
+                    public async Task SetPotion()
+                    {
+                        IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                        await channel.SendMessageAsync(
+                            "`!event set potion <command>` allows you to change the number of potions a character has for an event with these commands:\nevent set potion health");
+                    }
+
+                    // melee attacks
+                    [Command("health")]
+                    [Summary("Health potions")]
+                    public async Task SetHealthPotion()
+                    {
+                        IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                        await channel.SendMessageAsync(
+                            "`!event set potion health <character alias> <amount>` sets the amount of health potions a character has.");
+                    }
+                }
             }
 
             // Set event details
@@ -393,7 +501,7 @@ namespace BattleBot
                             "`!event disable potion <command>` allows you to disable different potions for an event with these commands:\nevent disable potion health");
                     }
 
-                    // Meele attacks
+                    // melee attacks
                     [Command("health")]
                     [Summary("Health potions")]
                     public async Task DisableHealthPotion()
@@ -433,7 +541,7 @@ namespace BattleBot
                             "`!event enable potion <command>` allows you to enable different potions for an event with these commands:\nevent enable potion health");
                     }
 
-                    // Meele attacks
+                    // melee attacks
                     [Command("health")]
                     [Summary("Health potions")]
                     public async Task EnableHealthPotion(int min, int max)

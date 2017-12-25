@@ -3,7 +3,7 @@
 namespace BattleBot
 {
     [Serializable]
-    abstract class Ruleset
+    internal abstract class Ruleset
     {
         public string Name { get; protected set; }
         public string Description { get; protected set; }
@@ -42,7 +42,7 @@ namespace BattleBot
     }
 
     [Serializable]
-    class AmentiaRuleset : Ruleset
+    internal class AmentiaRuleset : Ruleset
     {
 
         public AmentiaRuleset()
@@ -83,49 +83,80 @@ namespace BattleBot
             }
             character.Action(2);
 
-            string result = character.Name + " attempts to attack " + Utilities.AppendNames(targets) + ":";
-            int roll;
-
-            for (int i = 0; i < targets.Length; i++)
+            if (character.Blocking > 0)
             {
-                roll = rnd.Next(1, 10);
+                character.Blocking = 0;
+            }
+
+            string result = character.Name + " attempts to attack " + Utilities.AppendNames(targets) + ":";
+
+            foreach (Character curCharacter in targets)
+            {
+                int roll = rnd.Next(1, 10+1);
+                int secondary = -1;
+
+                if (curCharacter.Blocking > 0)
+                {
+                    result += "\n" + curCharacter.Name + " is blocking.";
+                    curCharacter.Blocking = 0;
+                    int newRoll = rnd.Next(1, 10+1);
+
+                    if (newRoll < roll)
+                    {
+                        secondary = roll;
+                        roll = newRoll;
+                    }
+                    else
+                    {
+                        secondary = newRoll;
+                    }
+                }
 
                 if (roll == 1)
                 {
-                    if (targets[i].Meele)
+                    if (curCharacter.Melee)
                     {
                         character.TakeDamage(BaseDamage * 2);
                         result +=
-                            $"\n{character.Name} **critically failed** the attack on {targets[i].Name} and was counter attacked for **{BaseDamage * 2}** damage. (rolled: {roll})";
+                            $"\n{character.Name} **critically failed** the attack on {curCharacter.Name} and was counter attacked for **{BaseDamage * 2}** damage.";
                     }
                     else
                     {
                         result +=
-                            $"\n{character.Name} **critically failed** the attack on {targets[i].Name} but {targets[i].Name} does not have a meele attack. (rolled: {roll})";
+                            $"\n{character.Name} **critically failed** the attack on {curCharacter.Name} but {curCharacter.Name} does not have a melee attack.";
                     }
                 }
                 else if (roll <= 5)
                 {
-                    if (targets[i].Meele)
+                    if (curCharacter.Melee)
                     {
                         character.TakeDamage(BaseDamage);
-                        result += $"\n{character.Name} **missed** {targets[i].Name} and was counter attacked for **{BaseDamage}** damage. (rolled: {roll})";
+                        result += $"\n{character.Name} **missed** {curCharacter.Name} and was counter attacked for **{BaseDamage}** damage.";
                     }
                     else
                     {
                         result +=
-                            $"\n{character.Name} **missed** {targets[i].Name} but {targets[i].Name} does not have a meele attack. (rolled: {roll})";
+                            $"\n{character.Name} **missed** {curCharacter.Name} but {curCharacter.Name} does not have a melee attack.";
                     }
                 }
                 else if (roll < 10)
                 {
-                    targets[i].TakeDamage(BaseDamage);
-                    result += $"\n{character.Name} **hit** {targets[i].Name} and did **{BaseDamage}** damage. (rolled: {roll})";
+                    curCharacter.TakeDamage(BaseDamage);
+                    result += $"\n{character.Name} **hit** {curCharacter.Name} and did **{BaseDamage}** damage.";
                 }
                 else
                 {
-                    targets[i].TakeDamage(BaseDamage * 2);
-                    result += $"\n{character.Name} **critically hit** {targets[i].Name} and did **{BaseDamage * 2}** damage. (rolled: {roll})";
+                    curCharacter.TakeDamage(BaseDamage * 2);
+                    result += $"\n{character.Name} **critically hit** {curCharacter.Name} and did **{BaseDamage * 2}** damage.";
+                }
+
+                if (secondary == -1)
+                {
+                    result += $" (rolled: {roll})";
+                }
+                else
+                {
+                    result += $" (rolled: {roll} and {secondary}";
                 }
 
                 if (character.Health <= 0)
@@ -133,10 +164,10 @@ namespace BattleBot
                     character.Actionpoints = 0;
                     return result + "\n" + character.Name + " is out of the battle. " + Emotes.Dead;
                 }
-                if (targets[i].Health <= 0)
+                if (curCharacter.Health <= 0)
                 {
-                    targets[i].Actionpoints = 0;
-                    result += "\n" + targets[i].Name + " is out of the battle. " + Emotes.Dead;
+                    curCharacter.Actionpoints = 0;
+                    result += "\n" + curCharacter.Name + " is out of the battle. " + Emotes.Dead;
                 }
             }
 
@@ -156,49 +187,80 @@ namespace BattleBot
             }
             character.Action(2);
 
-            string result = character.Name + " attempts to ranged attack " + Utilities.AppendNames(targets) + ":";
-            int roll;
-
-            for (int i = 0; i < targets.Length; i++)
+            if (character.Blocking > 0)
             {
-                roll = rnd.Next(1, 10);
+                character.Blocking = 0;
+            }
+
+            string result = character.Name + " attempts to ranged attack " + Utilities.AppendNames(targets) + ":";
+
+            foreach (Character curCharacter in targets)
+            {
+                int roll = rnd.Next(1, 10);
+                int secondary = -1;
+
+                if (curCharacter.Blocking > 0)
+                {
+                    result += "\n" + curCharacter.Name + " is blocking.";
+                    curCharacter.Blocking = 0;
+                    int newRoll = rnd.Next(1, 10+1);
+
+                    if (newRoll < roll)
+                    {
+                        secondary = roll;
+                        roll = newRoll;
+                    }
+                    else
+                    {
+                        secondary = newRoll;
+                    }
+                }
 
                 if (roll == 1)
                 {
-                    if (targets[i].Ranged)
+                    if (curCharacter.Ranged)
                     {
                         character.TakeDamage(BaseDamage * 2);
                         result +=
-                            $"\n{character.Name} **critically failed** {targets[i].Name} and was counter attacked for **{BaseDamage * 2}** damage. (rolled: {roll})";
+                            $"\n{character.Name} **critically failed** {curCharacter.Name} and was counter attacked for **{BaseDamage * 2}** damage.";
                     }
                     else
                     {
                         result +=
-                            $"\n{character.Name} **critically failed** {targets[i].Name} but {targets[i].Name} does not have a ranged attack. (rolled: {roll})";
+                            $"\n{character.Name} **critically failed** {curCharacter.Name} but {curCharacter.Name} does not have a ranged attack.";
                     }
                 }
                 else if (roll <= 5)
                 {
-                    if (targets[i].Ranged)
+                    if (curCharacter.Ranged)
                     {
                         character.TakeDamage(BaseDamage);
-                        result += $"\n{character.Name} **missed** {targets[i].Name} and was counter attacked for **{BaseDamage}** damage. (rolled: {roll})";
+                        result += $"\n{character.Name} **missed** {curCharacter.Name} and was counter attacked for **{BaseDamage}** damage.";
                     }
                     else
                     {
                         result +=
-                            $"\n{character.Name} **missed** {targets[i].Name} but {targets[i].Name} does not have a ranged attack. (rolled: {roll})";
+                            $"\n{character.Name} **missed** {curCharacter.Name} but {curCharacter.Name} does not have a ranged attack.";
                     }
                 }
                 else if (roll < 10)
                 {
-                    targets[i].TakeDamage(BaseDamage);
-                    result += $"\n{character.Name} **hit** {targets[i].Name} and did **{BaseDamage}** damage. (rolled: {roll})";
+                    curCharacter.TakeDamage(BaseDamage);
+                    result += $"\n{character.Name} **hit** {curCharacter.Name} and did **{BaseDamage}** damage.";
                 }
                 else
                 {
-                    targets[i].TakeDamage(BaseDamage * 2);
-                    result += $"\n{character.Name} **critically hit** {targets[i].Name} and did **{BaseDamage * 2}** damage. (rolled: {roll})";
+                    curCharacter.TakeDamage(BaseDamage * 2);
+                    result += $"\n{character.Name} **critically hit** {curCharacter.Name} and did **{BaseDamage * 2}** damage.";
+                }
+
+                if (secondary == -1)
+                {
+                    result += $" (rolled: {roll})";
+                }
+                else
+                {
+                    result += $" (rolled: {roll} and {secondary}";
                 }
 
                 if (character.Health <= 0)
@@ -206,10 +268,10 @@ namespace BattleBot
                     character.Actionpoints = 0;
                     return result + "\n" + character.Name + " is out of the battle. " + Emotes.Dead;
                 }
-                if (targets[i].Health <= 0)
+                if (curCharacter.Health <= 0)
                 {
-                    targets[i].Actionpoints = 0;
-                    result += "\n" + targets[i].Name + " is out of the battle. " + Emotes.Dead;
+                    curCharacter.Actionpoints = 0;
+                    result += "\n" + curCharacter.Name + " is out of the battle. " + Emotes.Dead;
                 }
             }
 
@@ -234,24 +296,22 @@ namespace BattleBot
             Random rnd = new Random();
 
             int requiredPoints;
-            if (targets.Length > 1)
-            {
-                requiredPoints = 2;
-            }
-            else
-            {
-                requiredPoints = 1;
-            }
+            requiredPoints = targets.Length > 1 ? 2 : 1;
 
             if (character.Actionpoints < requiredPoints)
                 return "Insufficient action points. " + Emotes.Annoyed;
             character.Action(requiredPoints);
 
+            if (character.Blocking > 0)
+            {
+                character.Blocking = 0;
+            }
+
             string result = character.Name + " attempts to heal " + Utilities.AppendNames(targets) + ":";
 
             for (int i = 0; i < targets.Length; i++)
             {
-                int roll = rnd.Next(1, 10);
+                int roll = rnd.Next(1, 10+1);
 
                 if (roll < 4)
                 {
@@ -293,11 +353,16 @@ namespace BattleBot
                 return "Insufficient action points. " + Emotes.Annoyed;
             character.Action(requiredPoints);
 
+            if (character.Blocking > 0)
+            {
+                character.Blocking = 0;
+            }
+
             string result = character.Name + " attempts to ward " + Utilities.AppendNames(targets) + ":";
 
             for (int i = 0; i < targets.Length; i++)
             {
-                var roll = rnd.Next(1, 10);
+                var roll = rnd.Next(1, 10+1);
 
                 if (roll < 4)
                 {
@@ -323,26 +388,12 @@ namespace BattleBot
 
         public override string Block(Character character)
         {
-            Random rnd = new Random();
-
             if (character.Actionpoints < 2)
                 return "Insufficient action points. " + Emotes.Annoyed;
             character.Action(2);
 
-            string result = character.Name + " attempts to block.";
-            int roll;
-
-            roll = rnd.Next(1, 10);
-
-            if (roll <= 5)
-            {
-                result += "\n" + character.Name + " failed to block. (rolled: " + roll + ")";
-            }
-            else
-            {
-                character.Ward(new Ward(WardHealth, WardDuration));
-                result += "\n" + character.Name + " raised his block. (rolled: " + roll + ")";
-            }
+            character.Blocking = WardDuration+1;
+            string result = character.Name + " raised their block.";
 
             if (character.Actionpoints > 0)
                 result += "\n" + character.Actionpoints + " action points remaining.";
@@ -361,6 +412,11 @@ namespace BattleBot
                 return "Insufficient action points. " + Emotes.Annoyed;
             character.Action(2);
 
+            if (character.Blocking > 0)
+            {
+                character.Blocking = 0;
+            }
+
             string result = character.Name + " used a health potion.";
             result += "\n" + character.HealthPotions + " health potions remaining.";
             character.Health += 1;
@@ -378,7 +434,7 @@ namespace BattleBot
 
             if (PotionHealthRollMax > 0)
             {
-                int result = rnd.Next(PotionHealthRollMin, PotionHealthRollMax);
+                int result = rnd.Next(PotionHealthRollMin, PotionHealthRollMax+1);
                 character.HealthPotions = result;
 
                 return character.Name + " starts with " + result + " health potion(s).";
@@ -389,7 +445,7 @@ namespace BattleBot
     }
 
     [Serializable]
-    class Amentia2Ruleset : AmentiaRuleset
+    internal class Amentia2Ruleset : AmentiaRuleset
     {
 
         public Amentia2Ruleset()
@@ -409,6 +465,11 @@ namespace BattleBot
                 return "Insufficient action points." + Emotes.Annoyed;
             }
             character.Action(2);
+
+            if (character.Blocking > 0)
+            {
+                character.Blocking = 0;
+            }
 
             string result = character.Name + " attempts to attack " + Utilities.AppendNames(targets) + ":";
 
@@ -435,7 +496,7 @@ namespace BattleBot
         {
             string status = "";
             Random rnd = new Random();
-            int roll = rnd.Next(1, 10);
+            int roll = rnd.Next(1, 10+1);
 
             if (roll <= 2)
             {

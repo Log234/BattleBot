@@ -2,7 +2,7 @@
 
 namespace BattleBot
 {
-    class Utilities
+    internal class Utilities
     {
         // Returns all the names concatenated to one string.
         public static string AppendNames(Character[] characters)
@@ -38,6 +38,19 @@ namespace BattleBot
             datetime += DateTime.Now.Minute;
 
             return datetime;
+        }
+
+        public static string[] SplitList(string list)
+        {
+            if (list.Contains(","))
+            {
+                string newList = list.Replace(" and ", ", ");
+                return newList.Split(", ");
+            }
+            else
+            {
+                return list.Split(" ");
+            }
         }
     }
 }

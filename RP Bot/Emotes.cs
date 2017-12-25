@@ -9,7 +9,7 @@
         public static string Dead = "<:bb_dead:387253559491821568>";
         public static string Happy = "<:bb_happy:387253558342451201>";
         public static string Heart = "<:bb_heart:387253558703030272>";
-        public static string Meele = "<:bb_meele:387730766660108298>";
+        public static string melee = "<:bb_melee:387730766660108298>";
         public static string Oops = "<:bb_oops:387565228088492042>";
         public static string Owo = "<:bb_owo:387559620446650369>";
         public static string HealthPotion = "<:bb_potion_red:387742182402031627>";

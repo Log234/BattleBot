@@ -8,6 +8,71 @@ using Discord.WebSocket;
 
 namespace BattleBot
 {
+    [Group("guild")]
+    public class GuildModule : ModuleBase<SocketCommandContext>
+    {
+        // Get guild status
+        [Command("status")]
+        [Summary("Prints the status of a guild.")]
+        public async Task StatusGuild()
+        {
+            if (Context.Message.Channel is SocketGuildChannel channel)
+            {
+                await ReplyAsync(Data.GetGuild(channel.Guild).GetStatus());
+                return;
+            }
+            await ReplyAsync("Currently not in a guild channel.");
+        }
+
+        [Group("add")]
+        public class AddModule : ModuleBase<SocketCommandContext>
+        {
+            [Command("adminrole")]
+            [Summary("Adds an admin role.")]
+            public async Task RemoveAdminrole(IRole role)
+            {
+                if (Context.Message.Channel is SocketGuildChannel channel)
+                {
+                    Guild guild = Data.GetGuild(channel.Guild);
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!guild.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have admin access in this guild.");
+                        return;
+                    }
+
+                    await ReplyAsync(Data.GetGuild(channel.Guild).AddAdminrole(role));
+                    return;
+                }
+                await ReplyAsync("Currently not in a guild channel.");
+            }
+        }
+
+        [Group("remove")]
+        public class RemoveModule : ModuleBase<SocketCommandContext>
+        {
+            [Command("adminrole")]
+            [Summary("Removes an admin role.")]
+            public async Task RemoveAdminrole(IRole role)
+            {
+                if (Context.Message.Channel is SocketGuildChannel channel)
+                {
+                    Guild guild = Data.GetGuild(channel.Guild);
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!guild.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have admin access in this guild.");
+                        return;
+                    }
+
+                    await ReplyAsync(Data.GetGuild(channel.Guild).RemoveAdminrole(role));
+                    return;
+                }
+                await ReplyAsync("Currently not in a guild channel.");
+            }
+        }
+    }
+
     [Group("channel")]
     public class ChannelModule : ModuleBase<SocketCommandContext>
     {
@@ -68,6 +133,13 @@ namespace BattleBot
                 return;
             }
 
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to add an administrator to this event.");
+                return;
+            }
+
             await ReplyAsync(curEvent.Start(Data.GetUser(Context.Message.Author)));
         }
 
@@ -84,6 +156,21 @@ namespace BattleBot
             }
 
             await ReplyAsync(curEvent.Status());
+        }
+
+        // Event full status
+        [Command("fullstatus")]
+        [Summary("Prints the status of an event.")]
+        public async Task FullStatusEvent(string eventId = "Active")
+        {
+            Event curEvent = Data.GetEvent(Context, eventId);
+            if (curEvent == null)
+            {
+                await ReplyAsync($"Could not find any event in this channel with that ID.");
+                return;
+            }
+
+            await ReplyAsync(curEvent.FullStatus());
         }
 
         // Start an event
@@ -142,7 +229,7 @@ namespace BattleBot
             Character character = user.GetCharacter(alias);
             if (character == null)
             {
-                await ReplyAsync("Could not find that character.");
+                await ReplyAsync($"Could not find the character: " + alias);
                 return;
             }
 
@@ -190,10 +277,9 @@ namespace BattleBot
 
                 User user = Data.GetUser(Context.Message.Author);
                 Character character = user.GetCharacter(alias);
-
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find a character with that alias.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -220,7 +306,14 @@ namespace BattleBot
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync($"Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to add an administrator to this event.");
                     return;
                 }
 
@@ -266,13 +359,24 @@ namespace BattleBot
                 public async Task NewNpc([Remainder] string name)
                 {
                     Event curEvent = Data.GetEvent(Context);
-                    User user = Data.GetUser(Context.Message.Author);
+                    if (curEvent == null)
+                    {
+                        await ReplyAsync("Could not find the event.");
+                        return;
+                    }
 
-                    Character character = new Character(name, 1, 1, user)
+                    User curUser = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(curUser))
+                    {
+                        await ReplyAsync("You do not have permission to add an administrator to this event.");
+                        return;
+                    }
+
+                    Character character = new Character(name, 1, 1, curUser)
                     {
                         Npc = true
                     };
-                    await ReplyAsync(curEvent.AddCharacter(character, user));
+                    await ReplyAsync(curEvent.AddCharacter(character, curUser));
                 }
 
                 // Create a new team for this event
@@ -281,6 +385,18 @@ namespace BattleBot
                 public async Task NewTeam([Remainder] string name)
                 {
                     Event curEvent = Data.GetEvent(Context);
+                    if (curEvent == null)
+                    {
+                        await ReplyAsync("Could not find the event.");
+                        return;
+                    }
+
+                    User curUser = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(curUser))
+                    {
+                        await ReplyAsync("You do not have permission to add an administrator to this event.");
+                        return;
+                    }
 
                     await ReplyAsync(curEvent.AddTeam(name));
                 }
@@ -292,7 +408,7 @@ namespace BattleBot
         [Summary("Remove characters, teams and more from the event.")]
         public class EventRemoveModule : ModuleBase<SocketCommandContext>
         {
-            // Add an admin
+            // Remove an admin
             [Command("admin")]
             [Summary("Remove an administrator from the event.")]
             public async Task RemoveAdmin(SocketUser user, string eventId = "Active")
@@ -307,36 +423,62 @@ namespace BattleBot
                 User curUser = Data.GetUser(Context.Message.Author);
                 if (!curEvent.IsAdmin(curUser))
                 {
-                    await ReplyAsync("You do not have permission to add an administrator to this event.");
+                    await ReplyAsync("You do not have permission to remove an administrator from this event.");
                     return;
                 }
 
                 await ReplyAsync(curEvent.RemoveAdmin(Data.GetUser(user)));
             }
 
-            // Create a new character for this event
+            // Remove a character from this event
             [Command("character")]
             [Alias("npc")]
             [Summary("Remove a character from the event.")]
             public async Task RemoveCharacter(string alias)
             {
                 Event curEvent = Data.GetEvent(Context);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync($"Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to remove a character from this event.");
                     return;
                 }
 
                 await ReplyAsync(curEvent.RemoveCharacter(character));
             }
 
-            // Create a new team for this event
+            // Remove a team from this event
             [Command("team")]
-            [Summary("Create a new team for this event.")]
+            [Summary("Remove a team from this event.")]
             public async Task NewTeam(string alias)
             {
                 Event curEvent = Data.GetEvent(Context);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to add an administrator to this event.");
+                    return;
+                }
+
                 Team team = curEvent.GetTeam(alias);
                 if (team == null)
                 {
@@ -359,7 +501,6 @@ namespace BattleBot
             [Summary("Sets the ruleset for the event, can only be done before the event starts.")]
             public async Task SetRuleset(string rulesetId, string eventId = "Active")
             {
-                User user = Data.GetUser(Context.Message.Author);
                 Event curEvent = Data.GetEvent(Context, eventId);
 
                 if (curEvent == null)
@@ -368,6 +509,7 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
                 if (!curEvent.IsAdmin(user))
                 {
                     await ReplyAsync("You do not have permission to set the ruleset for this event.");
@@ -397,7 +539,7 @@ namespace BattleBot
             // Set npc
             [Command("npc")]
             [Summary("Changes whether a character has ranged attacks or not.")]
-            public async Task SetNPC(string alias, bool value, string eventId = "Active")
+            public async Task SetNpc(string alias, bool value, string eventId = "Active")
             {
                 Event curEvent = Data.GetEvent(Context, eventId);
                 if (curEvent == null)
@@ -406,10 +548,17 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to change this for this event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -425,10 +574,10 @@ namespace BattleBot
                 }
             }
 
-            // Set Meele
-            [Command("meele")]
-            [Summary("Changes whether a character has meele attacks or not.")]
-            public async Task Meele(string alias, bool value, string eventId = "Active")
+            // Set melee
+            [Command("melee")]
+            [Summary("Changes whether a character has melee attacks or not.")]
+            public async Task Melee(string alias, bool value, string eventId = "Active")
             {
                 Event curEvent = Data.GetEvent(Context, eventId);
                 if (curEvent == null)
@@ -440,19 +589,26 @@ namespace BattleBot
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
-                character.Meele = value;
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to change the meele ability of this character.");
+                    return;
+                }
+
+                character.Melee = value;
 
                 if (value)
                 {
-                    await ReplyAsync(character.Name + " now has meele attacks.");
+                    await ReplyAsync(character.Name + " now has melee attacks.");
                 }
                 else
                 {
-                    await ReplyAsync(character.Name + " no longer has meele attacks.");
+                    await ReplyAsync(character.Name + " no longer has melee attacks.");
                 }
             }
 
@@ -471,7 +627,14 @@ namespace BattleBot
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
+
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to change the ranged ability of this character.");
                     return;
                 }
 
@@ -490,7 +653,55 @@ namespace BattleBot
             // Set team
             [Command("team")]
             [Summary("Adds the character to a team.")]
-            public async Task Team(string charAlias, string teamAlias, string eventId = "Active")
+            public async Task Team(string teamAlias, [Remainder] string charAlias)
+            {
+                Event curEvent = Data.GetEvent(Context);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                string[] charAliasList = Utilities.SplitList(charAlias);
+                Character[] characters = new Character[charAliasList.Length];
+                User curUser = Data.GetUser(Context.Message.Author);
+                for (int i = 0; i < charAliasList.Length; i++)
+                {
+                    characters[i] = curEvent.GetCharacter(charAliasList[i]);
+                    if (characters[i] == null)
+                    {
+                        await ReplyAsync("Could not find a character by the alias: " + charAliasList[i]);
+                        return;
+                    }
+
+                    if (!characters[i].IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                    {
+                        await ReplyAsync("You do not have permission to set the team of " + characters[i].Name + ".");
+                        return;
+                    }
+                }
+
+                Team team = curEvent.GetTeam(teamAlias);
+                if (team == null)
+                {
+                    await ReplyAsync("Could not find a team by the alias: " + teamAlias);
+                    return;
+                }
+
+                string result = "Changing teams:";
+
+                foreach (Character character in characters)
+                {
+                    result += "\n" + curEvent.SetTeam(character, team);
+                }
+
+                await ReplyAsync(result);
+            }
+
+            // Set max health
+            [Command("turn")]
+            [Summary("Gives the turn to a specific character.")]
+            public async Task SetTurn(string alias, string eventId = "Active")
             {
                 Event curEvent = Data.GetEvent(Context, eventId);
                 if (curEvent == null)
@@ -499,16 +710,21 @@ namespace BattleBot
                     return;
                 }
 
-                Character character = curEvent.GetCharacter(charAlias);
-                if (character == null)
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
                     return;
                 }
 
-                Team team = curEvent.GetTeam(teamAlias);
+                Character character = curEvent.GetCharacter(alias);
+                if (character == null)
+                {
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
 
-                await ReplyAsync(curEvent.SetTeam(character, team));
+                await ReplyAsync(curEvent.SetTurn(character));
             }
 
             // Set max health
@@ -523,10 +739,17 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -545,10 +768,17 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -567,10 +797,17 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -589,10 +826,17 @@ namespace BattleBot
                     return;
                 }
 
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                    return;
+                }
+
                 Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
-                    await ReplyAsync("Could not find that character.");
+                    await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
@@ -646,6 +890,43 @@ namespace BattleBot
 
                 await ReplyAsync("The base heal is now: " + health);
             }
+
+            // Set event details
+            [Group("potion")]
+            [Summary("All commands for setting specific properties of the event.")]
+            public class EventEnablePotionModule : ModuleBase<SocketCommandContext>
+            {
+                // melee attacks
+                [Command("health")]
+                [Summary("Health potions")]
+                public async Task EnableHealthPotion(string alias, int amount, string eventId = "Active")
+                {
+                    Event curEvent = Data.GetEvent(Context, eventId);
+                    if (curEvent == null)
+                    {
+                        await ReplyAsync("Could not find the event.");
+                        return;
+                    }
+
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                        return;
+                    }
+
+                    Character character = curEvent.GetCharacter(alias);
+                    if (character == null)
+                    {
+                        await ReplyAsync($"Could not find the character: " + alias);
+                        return;
+                    }
+
+                    character.HealthPotions = amount;
+
+                    await ReplyAsync(character.Name + " now has " + amount + " health potions.");
+                }
+            }
         }
 
         // Set event details
@@ -658,15 +939,22 @@ namespace BattleBot
             [Summary("All commands for setting specific properties of the event.")]
             public class EventDisablePotionModule : ModuleBase<SocketCommandContext>
             {
-                // Meele attacks
+                // melee attacks
                 [Command("health")]
                 [Summary("Health potions")]
-                public async Task DisableHealthPotion()
+                public async Task DisableHealthPotion(string eventId = "Active")
                 {
-                    Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+                    Event curEvent = Data.GetEvent(Context, eventId);
                     if (curEvent == null)
                     {
                         await ReplyAsync("Could not find an active event.");
+                        return;
+                    }
+
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have permission to set the ruleset for this event.");
                         return;
                     }
 
@@ -680,7 +968,6 @@ namespace BattleBot
                     await ReplyAsync("Health potions are now disabled.");
                 }
             }
-
         }
 
         // Set event details
@@ -693,15 +980,22 @@ namespace BattleBot
             [Summary("All commands for setting specific properties of the event.")]
             public class EventEnablePotionModule : ModuleBase<SocketCommandContext>
             {
-                // Meele attacks
+                // melee attacks
                 [Command("health")]
                 [Summary("Health potions")]
-                public async Task EnableHealthPotion(int min, int max)
+                public async Task EnableHealthPotion(int min, int max, string eventId = "Active")
                 {
-                    Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+                    Event curEvent = Data.GetEvent(Context, eventId);
                     if (curEvent == null)
                     {
                         await ReplyAsync("Could not find an active event.");
+                        return;
+                    }
+
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have permission to set the ruleset for this event.");
                         return;
                     }
 
@@ -719,205 +1013,238 @@ namespace BattleBot
 
                     foreach (Character character in curEvent.Characters)
                     {
-                        character.HealthPotions = rnd.Next(min, max);
+                        character.HealthPotions = rnd.Next(min, max+1);
                         result += $"\n{character.Name} got {character.HealthPotions} health potions.";
                     }
 
                     await ReplyAsync(result);
                 }
             }
+        }
+    }
 
+    // Combat commands
+    [Summary("All combat related commands.")]
+    public class CombatModule : ModuleBase<SocketCommandContext>
+    {
+        // melee attacks
+        [Command("attack")]
+        [Summary("melee attacks")]
+        public async Task Attack(string alias, [Remainder] string targetAlias)
+        {
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
+            {
+                await ReplyAsync("Could not find an active event.");
+                return;
+            }
+
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
+            {
+                await ReplyAsync("Could not find the character " + alias);
+                return;
+            }
+
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
+            }
+
+            string[] targetAliases = Utilities.SplitList(targetAlias);
+            Character[] targets = new Character[targetAliases.Length];
+
+            for (int i = 0; i < targetAliases.Length; i++)
+            {
+                targets[i] = curEvent.GetCharacter(targetAliases[i]);
+                if (targets[i] == null)
+                {
+                    await ReplyAsync($"Could not find the character: {targetAliases[i]}.");
+                    return;
+                }
+            }
+
+            if (!character.Melee)
+            {
+                await ReplyAsync(character.Name + " does not have a melee attack.");
+                return;
+            }
+
+            await ReplyAsync(curEvent.Attack(character, targets));
         }
 
-        // Combat commands
-        [Summary("All combat related commands.")]
-        public class CombatModule : ModuleBase<SocketCommandContext>
+        // melee attacks
+        [Command("ranged")]
+        [Summary("Ranged attacks")]
+        public async Task Ranged(string alias, [Remainder] string targetAlias)
         {
-            // Meele attacks
-            [Command("attack")]
-            [Summary("Meele attacks")]
-            public async Task Attack(string alias, [Remainder] string targetAlias)
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
             {
-                Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                if (curEvent == null)
-                {
-                    await ReplyAsync("Could not find an active event.");
-                    return;
-                }
-
-                Character character = curEvent.GetCharacter(alias.ToLower());
-
-                string[] targetAliases = targetAlias.Split(' ');
-                Character[] targets = new Character[targetAliases.Length];
-
-                for (int i = 0; i < targetAliases.Length; i++)
-                {
-                    targets[i] = curEvent.GetCharacter(targetAliases[i]);
-                    if (targets[i] == null)
-                    {
-                        await ReplyAsync($"Could not find the character: {targets[i]}.");
-                        return;
-                    }
-                }
-
-                await ReplyAsync(curEvent.Attack(character, targets));
+                await ReplyAsync("Could not find an active event.");
+                return;
             }
 
-            // Meele attacks
-            [Command("ranged")]
-            [Summary("Ranged attacks")]
-            public async Task Ranged(string alias, [Remainder] string targetAlias)
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
             {
-                Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                if (curEvent == null)
-                {
-                    await ReplyAsync("Could not find an active event.");
-                    return;
-                }
-
-                Character character = curEvent.GetCharacter(alias.ToLower());
-
-                string[] targetAliases = targetAlias.Split(' ');
-                Character[] targets = new Character[targetAliases.Length];
-
-                for (int i = 0; i < targetAliases.Length; i++)
-                {
-                    targets[i] = curEvent.GetCharacter(targetAliases[i]);
-                    if (targets[i] == null)
-                    {
-                        await ReplyAsync($"Could not find the character: {targets[i]}.");
-                        return;
-                    }
-                }
-
-                if (!character.Ranged)
-                {
-                    await ReplyAsync(character.Name + " does not have a ranged attack.");
-                    return;
-                }
-
-                await ReplyAsync(curEvent.Ranged(character, targets));
+                await ReplyAsync("Could not find the character " + alias);
+                return;
             }
 
-            // Heals
-            [Command("heal")]
-            [Summary("Heals")]
-            public async Task Heal(string alias, [Remainder] string targetAlias)
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
             {
-                Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                if (curEvent == null)
-                {
-                    await ReplyAsync("Could not find an active event.");
-                    return;
-                }
-
-                Character character = curEvent.GetCharacter(alias.ToLower());
-
-                string[] targetAliases = targetAlias.Split(' ');
-                Character[] targets = new Character[targetAliases.Length];
-
-                for (int i = 0; i < targetAliases.Length; i++)
-                {
-                    targets[i] = curEvent.GetCharacter(targetAliases[i]);
-                    if (targets[i] == null)
-                    {
-                        await ReplyAsync($"Could not find the character: {targets[i]}.");
-                        return;
-                    }
-                }
-
-                await ReplyAsync(curEvent.Heal(character, targets));
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
             }
 
-            // Wards
-            [Command("ward")]
-            [Summary("Meele attacks")]
-            public async Task Ward(string alias, [Remainder] string targetAlias)
+            string[] targetAliases = Utilities.SplitList(targetAlias);
+            Character[] targets = new Character[targetAliases.Length];
+
+            for (int i = 0; i < targetAliases.Length; i++)
             {
-                Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                if (curEvent == null)
+                targets[i] = curEvent.GetCharacter(targetAliases[i]);
+                if (targets[i] == null)
                 {
-                    await ReplyAsync("Could not find an active event.");
+                    await ReplyAsync($"Could not find the character: {targetAliases[i]}.");
                     return;
                 }
-
-                Character character = curEvent.GetCharacter(alias.ToLower());
-                if (character == null)
-                {
-                    await ReplyAsync($"Could not find the character: " + alias);
-                    return;
-                }
-
-                string[] targetAliases = targetAlias.Split(' ');
-                Character[] targets = new Character[targetAliases.Length];
-
-                for (int i = 0; i < targetAliases.Length; i++)
-                {
-                    targets[i] = curEvent.GetCharacter(targetAliases[i]);
-                    if (targets[i] == null)
-                    {
-                        await ReplyAsync($"Could not find the character: {targetAliases[i]}.");
-                        return;
-                    }
-                }
-
-                await ReplyAsync(curEvent.Ward(character, targets));
             }
 
-            // Blocks
-            [Command("block")]
-            [Summary("Meele attacks")]
-            public async Task Block(string alias)
+            if (!character.Ranged)
             {
-                Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                if (curEvent == null)
-                {
-                    await ReplyAsync("Could not find an active event.");
-                    return;
-                }
-
-                Character character = curEvent.GetCharacter(alias.ToLower());
-                if (character == null)
-                {
-                    await ReplyAsync($"Could not find the character: " + alias);
-                    return;
-                }
-
-                await ReplyAsync(curEvent.Block(character));
+                await ReplyAsync(character.Name + " does not have a ranged attack.");
+                return;
             }
 
+            await ReplyAsync(curEvent.Ranged(character, targets));
+        }
+
+        // Heals
+        [Command("heal")]
+        [Summary("Heals")]
+        public async Task Heal(string alias, [Remainder] string targetAlias)
+        {
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
+            {
+                await ReplyAsync("Could not find an active event.");
+                return;
+            }
+
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
+            {
+                await ReplyAsync("Could not find the character " + alias);
+                return;
+            }
+
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
+            }
+
+            string[] targetAliases = Utilities.SplitList(targetAlias);
+            Character[] targets = new Character[targetAliases.Length];
+
+            for (int i = 0; i < targetAliases.Length; i++)
+            {
+                targets[i] = curEvent.GetCharacter(targetAliases[i]);
+                if (targets[i] == null)
+                {
+                    await ReplyAsync($"Could not find the character: {targetAliases[i]}.");
+                    return;
+                }
+            }
+
+            await ReplyAsync(curEvent.Heal(character, targets));
+        }
+
+        // Wards
+        [Command("ward")]
+        [Summary("Wards")]
+        public async Task Ward(string alias, [Remainder] string targetAlias)
+        {
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
+            {
+                await ReplyAsync("Could not find an active event.");
+                return;
+            }
+
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
+            {
+                await ReplyAsync($"Could not find the character: " + alias);
+                return;
+            }
+
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
+            }
+
+            string[] targetAliases = Utilities.SplitList(targetAlias);
+            Character[] targets = new Character[targetAliases.Length];
+
+            for (int i = 0; i < targetAliases.Length; i++)
+            {
+                targets[i] = curEvent.GetCharacter(targetAliases[i]);
+                if (targets[i] == null)
+                {
+                    await ReplyAsync($"Could not find the character: {targetAliases[i]}.");
+                    return;
+                }
+            }
+
+            await ReplyAsync(curEvent.Ward(character, targets));
+        }
+
+        // Blocks
+        [Command("block")]
+        [Summary("Shield blocks")]
+        public async Task Block(string alias)
+        {
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
+            {
+                await ReplyAsync("Could not find an active event.");
+                return;
+            }
+
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
+            {
+                await ReplyAsync($"Could not find the character: " + alias);
+                return;
+            }
+
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
+            }
+
+            await ReplyAsync(curEvent.Block(character));
+        }
+
+        // Potions
+        [Group("potion")]
+        [Summary("All potion related commands.")]
+        public class PotionModule : ModuleBase<SocketCommandContext>
+        {
             // Potions
-            [Group("potion")]
-            [Summary("All potion related commands.")]
-            public class PotionModule : ModuleBase<SocketCommandContext>
-            {
-                // Potions
-                [Command("health")]
-                [Summary("Health potions")]
-                public async Task Health(string alias)
-                {
-                    Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
-                    if (curEvent == null)
-                    {
-                        await ReplyAsync("Could not find an active event.");
-                        return;
-                    }
-
-                    Character character = curEvent.GetCharacter(alias.ToLower());
-                    if (character == null)
-                    {
-                        await ReplyAsync($"Could not find the character: " + alias);
-                        return;
-                    }
-
-                    await ReplyAsync(curEvent.PotionHealth(character));
-                }
-            }
-
-            // Pass
-            [Command("pass")]
-            [Summary("Pass round")]
-            public async Task Pass(string alias)
+            [Command("health")]
+            [Summary("Health potions")]
+            public async Task Health(string alias)
             {
                 Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
                 if (curEvent == null)
@@ -926,15 +1253,51 @@ namespace BattleBot
                     return;
                 }
 
-                Character character = curEvent.GetCharacter(alias.ToLower());
+                Character character = curEvent.GetCharacter(alias);
                 if (character == null)
                 {
                     await ReplyAsync($"Could not find the character: " + alias);
                     return;
                 }
 
-                await ReplyAsync(curEvent.Pass(character));
+                User curUser = Data.GetUser(Context.Message.Author);
+                if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+                {
+                    await ReplyAsync("You do not have permission to remove a character from this event.");
+                    return;
+                }
+
+                await ReplyAsync(curEvent.PotionHealth(character));
             }
+        }
+
+        // Pass
+        [Command("pass")]
+        [Summary("Pass round")]
+        public async Task Pass(string alias)
+        {
+            Event curEvent = Data.GetChannel(Context.Channel as SocketChannel).ActiveEvent;
+            if (curEvent == null)
+            {
+                await ReplyAsync("Could not find an active event.");
+                return;
+            }
+
+            Character character = curEvent.GetCharacter(alias);
+            if (character == null)
+            {
+                await ReplyAsync($"Could not find the character: " + alias);
+                return;
+            }
+
+            User curUser = Data.GetUser(Context.Message.Author);
+            if (!character.IsAdmin(curUser) && !curEvent.IsAdmin(curUser))
+            {
+                await ReplyAsync("You do not have permission to remove a character from this event.");
+                return;
+            }
+
+            await ReplyAsync(curEvent.Pass(character));
         }
     }
 
@@ -1023,6 +1386,7 @@ namespace BattleBot
 
         // Flip coin
         [Command("flipcoin")]
+        [Alias("coinflip")]
         [Summary("Flip a coin.")]
         public async Task Flip()
         {

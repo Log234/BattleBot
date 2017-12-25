@@ -5,7 +5,7 @@ namespace BattleBot
 {
     public static class Dice
     {
-        enum Operator { Add, Subtract, Multiply, Divide }
+        private enum Operator { Add, Subtract, Multiply, Divide }
 
 
         public static string Flip(string author)
@@ -50,7 +50,7 @@ namespace BattleBot
                         }
                         else if (curExpression is NumExpression)
                         {
-                            (curExpression as NumExpression).Right = newExpression;
+                            ((NumExpression) curExpression).Right = newExpression;
                         }
                         break;
                     case 'd':
@@ -67,7 +67,7 @@ namespace BattleBot
                         }
                         else if (curExpression is NumExpression)
                         {
-                            (curExpression as NumExpression).Right = rndExpression;
+                            ((NumExpression) curExpression).Right = rndExpression;
                         }
                         break;
                     case '+':
@@ -93,7 +93,6 @@ namespace BattleBot
 
                         if (curExpression is RdmVal || curExpression is IntVal)
                         {
-                            Debug.Assert(intExp != null, nameof(intExp) + " != null");
                             intExp.Left = curExpression;
                             curExpression = intExp;
                             root = intExp;
@@ -170,16 +169,16 @@ namespace BattleBot
             return int.Parse(number);
         }
 
-        abstract class Expression
+        private abstract class Expression
         {
             public abstract string GetExpression();
             public abstract string GetResult();
             public abstract double Calculate();
         }
 
-        class IntVal : Expression
+        private class IntVal : Expression
         {
-            int Value;
+            private int Value;
 
             public IntVal(int value)
             {
@@ -202,14 +201,14 @@ namespace BattleBot
             }
         }
 
-        class RdmVal : Expression
+        private class RdmVal : Expression
         {
             private int _result;
-            int diceSize;
+            private readonly int _diceSize;
 
             public RdmVal(int diceSize)
             {
-                this.diceSize = diceSize;
+                this._diceSize = diceSize;
             }
 
             public override double Calculate()
@@ -217,7 +216,7 @@ namespace BattleBot
                 if (_result == 0)
                 {
                     Random rng = new Random();
-                    _result = rng.Next(1, diceSize);
+                    _result = rng.Next(1, _diceSize+1);
                     return _result;
                 }
                 return _result;
@@ -225,7 +224,7 @@ namespace BattleBot
 
             public override string GetExpression()
             {
-                return "d" + diceSize;
+                return "d" + _diceSize;
             }
 
             public override string GetResult()
@@ -234,7 +233,7 @@ namespace BattleBot
             }
         }
 
-        class NumExpression : Expression
+        private class NumExpression : Expression
         {
             private double _result;
             public Operator opr;
