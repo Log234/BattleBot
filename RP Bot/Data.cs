@@ -48,6 +48,12 @@ namespace BattleBot
         // Get event based on context
         public static Event GetEvent(SocketCommandContext context, string eventId = "Active")
         {
+            if (context.Channel is SocketDMChannel)
+            {
+                User user = GetUser(context.Message.Author);
+                return user.CurrentEvent;
+            }
+
             Event curEvent = null;
             if (eventId.Equals("Active"))
             {
@@ -58,7 +64,7 @@ namespace BattleBot
             {
                 if (_storage.channels.TryGetValue(context.Channel.Id, out Channel channel) && channel.events.TryGetValue(eventId.ToLower(), out Event newEvent))
                 {
-                    curEvent = newEvent;
+                    return newEvent;
                 }
                 else
                     return null;
@@ -298,7 +304,8 @@ namespace BattleBot
         public string Username { get; }
         public string Discriminator { get; }
         private readonly HashSet<Character> _characters = new HashSet<Character>();
-        public Dictionary<ulong, Event> ActiveEvents = new Dictionary<ulong, Event>();
+        public readonly Dictionary<ulong, Event> ActiveEvents = new Dictionary<ulong, Event>();
+        public Event CurrentEvent;
         private int _eventId;
 
         public User(SocketUser user)
@@ -307,6 +314,7 @@ namespace BattleBot
             Username = user.Username;
             Discriminator = user.Discriminator;
             Tag = "@" + Username + "#" + Discriminator;
+            CurrentEvent = null;
             Console.WriteLine("User created: " + user.Username);
         }
 
@@ -553,6 +561,7 @@ namespace BattleBot
         public string Name { get; }
         public HashSet<string> aliases = new HashSet<string>();
         public List<Character> members = new List<Character>();
+        public bool Hidden { get; set; }
 
         public Team(string name)
         {
@@ -580,7 +589,7 @@ namespace BattleBot
 
             foreach (Character member in members)
             {
-                status += "\n" + member.GetStatus();
+                if (!member.Hidden) status += "\n" + member.GetStatus();
             }
 
             return status;
@@ -594,6 +603,7 @@ namespace BattleBot
         public string Name { get; }
         public HashSet<string> aliases = new HashSet<string>();
         public bool Npc { get; set; }
+        public bool Hidden { get; set; }
         public bool Melee { get; set; }
         public bool Ranged { get; set; }
         public readonly List<User> Admins = new List<User>();

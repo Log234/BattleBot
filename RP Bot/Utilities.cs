@@ -52,5 +52,24 @@ namespace BattleBot
                 return list.Split(" ");
             }
         }
+
+        public static string CreateList(string[] list)
+        {
+            string strList = "";
+            for (int i = 0; i < list.Length; i++)
+            {
+                if (i != list.Length - 2)
+                {
+                    strList += list[i] + ", ";
+                }
+                else
+                {
+                    strList += list[i] + " and ";
+                }
+            }
+
+            strList = strList.Substring(0, strList.Length - 2);
+            return strList;
+        }
     }
 }

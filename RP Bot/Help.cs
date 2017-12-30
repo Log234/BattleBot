@@ -139,7 +139,7 @@ namespace BattleBot
             {
                 IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                 await channel.SendMessageAsync(
-                    "`!event <command>` allows you to create, join or alter events with these commands:\nevent create\nevent start\nevent finish\nevent join\nevent add <command>\nevent remove <command>\nevent set <command>\nevent disable <command>\nevent enable <command>");
+                    "`!event <command>` allows you to create, join or alter events with these commands:\nevent create\nevent start\nevent finish\nevent join\nevent add <command>\nevent remove <command>\nevent set <command>\nevent disable <command>\nevent enable <command>\nevent hide <command>\nevent reveal <command>");
             }
 
             [Command("create")]
@@ -337,7 +337,7 @@ namespace BattleBot
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
-                        "`!event set <command>` allows you change details for this event:\nevent set ruleset\nevent set npc\nevent set melee\nevent set ranged\nevent set team\nevent set maxhealth\nevent set health\nevent set ward\nevent set ap\nevent set basedamage\nevent set baseheal\nevent set potion <command>");
+                        "`!event set <command>` allows you change details for this event:\nevent set ruleset\nevent set npc\nevent set melee\nevent set ranged\nevent set team\nevent set turn\nevent set fixedorder\nevent set maxhealth\nevent set health\nevent set ward\nevent set ap\nevent set basedamage\nevent set baseheal\nevent set potion <command>\nevent set order <command>");
                 }
 
                 [Command("ruleset")]
@@ -351,7 +351,7 @@ namespace BattleBot
 
                 [Command("npc")]
                 [Summary("Changes whether a character has ranged attacks or not.")]
-                public async Task SetNPC()
+                public async Task SetNpc()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
@@ -392,6 +392,15 @@ namespace BattleBot
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
                         "`!event set turn <character alias>` gives the turn to the given character.");
+                }
+
+                [Command("fixedorder")]
+                [Summary("Event set turn help")]
+                public async Task SetFixedOrder()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event set fixedorder <true/false>` Enables or disables fixed order, fixed order forces characters to play on their turn only, otherwise any character can play at any time.");
                 }
 
                 [Command("maxhealth")]
@@ -447,10 +456,10 @@ namespace BattleBot
                     await channel.SendMessageAsync(
                         "`!event set baseheal <health>` sets the events's base heal to the given value.");
                 }
-                
+
                 [Group("potion")]
                 [Summary("All commands for setting specific properties of the event.")]
-                public class EventDisablePotionModule : ModuleBase<SocketCommandContext>
+                public class EventSetPotionModule : ModuleBase<SocketCommandContext>
                 {
                     [Command]
                     [Summary("Event set potion help")]
@@ -461,7 +470,7 @@ namespace BattleBot
                             "`!event set potion <command>` allows you to change the number of potions a character has for an event with these commands:\nevent set potion health");
                     }
 
-                    // melee attacks
+                    // Health potions
                     [Command("health")]
                     [Summary("Health potions")]
                     public async Task SetHealthPotion()
@@ -469,6 +478,30 @@ namespace BattleBot
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                         await channel.SendMessageAsync(
                             "`!event set potion health <character alias> <amount>` sets the amount of health potions a character has.");
+                    }
+                }
+
+                [Group("order")]
+                [Summary("All commands for setting specific properties of the event.")]
+                public class EventSetOrderModule : ModuleBase<SocketCommandContext>
+                {
+                    [Command]
+                    [Summary("Event set order help")]
+                    public async Task SetPotion()
+                    {
+                        IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                        await channel.SendMessageAsync(
+                            "`!event set order <command>` allows you to change the teams and characters for an event with these commands:\nevent set order teams");
+                    }
+
+                    // Teams
+                    [Command("teams")]
+                    [Summary("Team order")]
+                    public async Task SetOrderTeams()
+                    {
+                        IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                        await channel.SendMessageAsync(
+                            "`!event set order teams [<team alias> ... <team alias>]` sets the order of teams regarding when they get their turns, if you enter this without any team aliases you will get a list of team aliases.");
                     }
                 }
             }
@@ -480,7 +513,7 @@ namespace BattleBot
             {
                 [Command]
                 [Summary("Event disable help")]
-                public async Task disable()
+                public async Task Disable()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
@@ -520,7 +553,7 @@ namespace BattleBot
             {
                 [Command]
                 [Summary("Event enable help")]
-                public async Task enable()
+                public async Task Enable()
                 {
                     IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                     await channel.SendMessageAsync(
@@ -544,7 +577,7 @@ namespace BattleBot
                     // melee attacks
                     [Command("health")]
                     [Summary("Health potions")]
-                    public async Task EnableHealthPotion(int min, int max)
+                    public async Task EnableHealthPotion()
                     {
                         IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
                         await channel.SendMessageAsync(
@@ -552,6 +585,76 @@ namespace BattleBot
                     }
                 }
 
+            }
+
+            // Event Hide
+            [Group("hide")]
+            [Summary("Commands for hiding characters and teams.")]
+            public class EventHideModule : ModuleBase<SocketCommandContext>
+            {
+                [Command]
+                [Summary("Event hide help")]
+                public async Task Hide()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event hide <command>` allows you to hide a character or a team for an event with these commands:\nevent hide team\nevent hide character");
+                }
+
+                // Hide team
+                [Command("team")]
+                [Summary("Hide team")]
+                public async Task HideTeam()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event hide team <team alias>` hides a team and all its characters.");
+                }
+
+                // Hide character
+                [Command("character")]
+                [Summary("Hide character")]
+                public async Task HideCharacter()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event hide character <character alias>` hides a character until they are revealed through some action or the reveal command.");
+                }
+            }
+
+            // Event reveal
+            [Group("reveal")]
+            [Summary("Commands for revealing characters and teams.")]
+            public class EventRevealModule : ModuleBase<SocketCommandContext>
+            {
+                [Command]
+                [Summary("Event reveal help")]
+                public async Task Reveal()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event reveal <command>` allows you to reveal a character or a team for an event with these commands:\nevent reveal team\nevent reveal character");
+                }
+
+                // Hide team
+                [Command("team")]
+                [Summary("Reveal team")]
+                public async Task RevealTeam()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event reveal team <team alias>` reveals a team and all its characters.");
+                }
+
+                // Hide character
+                [Command("character")]
+                [Summary("Reveal character")]
+                public async Task RevealCharacter()
+                {
+                    IDMChannel channel = await Context.Message.Author.GetOrCreateDMChannelAsync();
+                    await channel.SendMessageAsync(
+                        "`!event reveal character <character alias>` reveals a character.");
+                }
             }
         }
 

@@ -698,7 +698,7 @@ namespace BattleBot
                 await ReplyAsync(result);
             }
 
-            // Set max health
+            // Set turn
             [Command("turn")]
             [Summary("Gives the turn to a specific character.")]
             public async Task SetTurn(string alias, string eventId = "Active")
@@ -725,6 +725,37 @@ namespace BattleBot
                 }
 
                 await ReplyAsync(curEvent.SetTurn(character));
+            }
+
+            // Set fixed order
+            [Command("fixedorder")]
+            [Summary("Enable fixed order, characters can only play on their turn.")]
+            public async Task SetFixedOrder(bool value, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find the event.");
+                    return;
+                }
+
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                    return;
+                }
+
+                curEvent.FixedOrder = value;
+
+                if (value)
+                {
+                    await ReplyAsync("Fixed order is now enabled.");
+                }
+                else
+                {
+                    await ReplyAsync("Fixed order is now disabled.");
+                }
             }
 
             // Set max health
@@ -927,6 +958,59 @@ namespace BattleBot
                     await ReplyAsync(character.Name + " now has " + amount + " health potions.");
                 }
             }
+
+            // Set event details
+            [Group("order")]
+            [Summary("All commands for setting the .")]
+            public class EventSetOrderModule : ModuleBase<SocketCommandContext>
+            {
+
+                // Changing the order of the teams
+                [Command("teams")]
+                [Summary("Sets the order of the teams for the event, can only be done before the event starts.")]
+                public async Task SetOrderTeams([Remainder] string teamAliases = "Empty")
+                {
+                    Event curEvent = Data.GetEvent(Context);
+
+                    if (curEvent == null)
+                    {
+                        await ReplyAsync("Could not find the event.");
+                        return;
+                    }
+
+                    User user = Data.GetUser(Context.Message.Author);
+                    if (!curEvent.IsAdmin(user))
+                    {
+                        await ReplyAsync("You do not have permission to set the ruleset for this event.");
+                        return;
+                    }
+
+                    if (teamAliases.Equals("Empty"))
+                    {
+                        await ReplyAsync("Teams:\n" + curEvent.ListTeamsAlias());
+                        return;
+                    }
+
+                    string[] teamList = Utilities.SplitList(teamAliases);
+
+                    if (teamList.Length != curEvent.Teams.Count)
+                    {
+                        await ReplyAsync("You need to set the order of all the teams:\n" + curEvent.ListTeamsAlias());
+                        return;
+                    }
+
+                    foreach (string teamAlias in teamList)
+                    {
+                        if (curEvent.GetTeam(teamAlias) == null)
+                        {
+                            await ReplyAsync("Could not find the team: " + teamAlias);
+                            return;
+                        }
+                    }
+
+                    await ReplyAsync(curEvent.ReorderTeams(teamList));
+                }
+            }
         }
 
         // Set event details
@@ -1013,12 +1097,158 @@ namespace BattleBot
 
                     foreach (Character character in curEvent.Characters)
                     {
-                        character.HealthPotions = rnd.Next(min, max+1);
+                        character.HealthPotions = rnd.Next(min, max + 1);
                         result += $"\n{character.Name} got {character.HealthPotions} health potions.";
                     }
 
                     await ReplyAsync(result);
                 }
+            }
+        }
+
+        // Hide teams or characters
+        [Group("hide")]
+        [Summary("Commands for hiding teams and characters.")]
+        public class EventHideModule : ModuleBase<SocketCommandContext>
+        {
+            // hide team
+            [Command("team")]
+            [Summary("Hide team")]
+            public async Task HideTeam(string alias, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find an active event.");
+                    return;
+                }
+
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission hide a team for this event.");
+                    return;
+                }
+
+                Team team = curEvent.GetTeam(alias);
+                if (team == null)
+                {
+                    await ReplyAsync("Could not find a team by the alias: " + alias);
+                    return;
+                }
+
+                team.Hidden = true;
+
+                foreach (Character teamMember in team.members)
+                {
+                    teamMember.Hidden = true;
+                }
+
+                await ReplyAsync(team.Name + " is now hidden.");
+            }
+
+            // hide character
+            [Command("character")]
+            [Summary("Hide character")]
+            public async Task HideCharacter(string alias, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find an active event.");
+                    return;
+                }
+
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to hide a character for this event.");
+                    return;
+                }
+
+                Character character = curEvent.GetCharacter(alias);
+                if (character == null)
+                {
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
+
+                character.Hidden = true;
+
+                await ReplyAsync(character.Name + " is now hidden.");
+            }
+        }
+
+        // Reveal teams or characters
+        [Group("reveal")]
+        [Summary("All commands for setting specific properties of the event.")]
+        public class EventRevealModule : ModuleBase<SocketCommandContext>
+        {
+            // Reveal team
+            [Command("team")]
+            [Summary("Reveal team")]
+            public async Task RevealTeam(string alias, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find an active event.");
+                    return;
+                }
+
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to reveal a team for this event.");
+                    return;
+                }
+
+                Team team = curEvent.GetTeam(alias);
+                if (team == null)
+                {
+                    await ReplyAsync("Could not find a team by the alias: " + alias);
+                    return;
+                }
+
+                team.Hidden = false;
+
+                foreach (Character teamMember in team.members)
+                {
+                    teamMember.Hidden = false;
+                }
+
+                await ReplyAsync(team.Name + " was revealed!");
+            }
+
+            // Reveal character
+            [Command("character")]
+            [Summary("Reveal character")]
+            public async Task RevealCharacter(string alias, string eventId = "Active")
+            {
+                Event curEvent = Data.GetEvent(Context, eventId);
+                if (curEvent == null)
+                {
+                    await ReplyAsync("Could not find an active event.");
+                    return;
+                }
+
+                User user = Data.GetUser(Context.Message.Author);
+                if (!curEvent.IsAdmin(user))
+                {
+                    await ReplyAsync("You do not have permission to reveal a character for this event.");
+                    return;
+                }
+
+                Character character = curEvent.GetCharacter(alias);
+                if (character == null)
+                {
+                    await ReplyAsync($"Could not find the character: " + alias);
+                    return;
+                }
+
+                character.Hidden = false;
+
+                await ReplyAsync(character.Name + " was revealed!");
             }
         }
     }
@@ -1330,6 +1560,7 @@ namespace BattleBot
 
                 User user = Data.GetUser(Context.Message.Author);
                 user.SetActiveEvent(Context.Channel.Id, curEvent);
+                user.CurrentEvent = curEvent;
 
                 await ReplyAsync(user.Username + "'s active event for this channel is now: " + curEvent.Name);
             }
