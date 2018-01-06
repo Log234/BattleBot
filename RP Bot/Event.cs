@@ -21,14 +21,14 @@ namespace BattleBot
         public readonly HashSet<ulong> Users = new HashSet<ulong>();
 
         private readonly Dictionary<string, int> _duplicates = new Dictionary<string, int>();
-        private int Round { get; set; }
+        internal int Round { get; set; }
         private bool Done { get; set; }
         internal bool FixedOrder { private get; set; }
         private bool CustomOrder { get; set; }
         private string _log;
 
-        private int currentTeam = -1;
-        private int currentCharacter = -1;
+        internal int CurrentTeam = -1;
+        private int _currentCharacter;
 
         public Event(User dm, Channel channel, string name)
         {
@@ -49,6 +49,7 @@ namespace BattleBot
             }
 
             dm.SetActiveEvent(channel.Id, this);
+            dm.CurrentEvent = this;
             Users.Add(dm.Id);
 
             Console.WriteLine("Created event: " + Name + " (" + Id + ")");
@@ -116,17 +117,9 @@ namespace BattleBot
                 }
 
                 if (!FixedOrder) return Log(msg);
-                for (var index = 0; index < Teams.Count; index++)
-                {
-                    Team team = Teams[index];
-                    if (team.members.Count <= 0) continue;
-                    if (Teams[index].members.All(character => character.Npc)) continue;
-                    currentTeam = index;
-                    currentCharacter = 0;
-                    return Log(msg + $"\n{Teams[index].members[0].Name}'s turn:");
-                }
-
-                return Log(msg);
+                if (Teams.Count > 1) CurrentTeam = 0;
+                _currentCharacter = 0;
+                return NextTurn();
             }
             return Log("You do not have permission to start that event.");
         }
@@ -143,6 +136,18 @@ namespace BattleBot
         {
             string status = $"-------------- {Name} ({Id}) --------------";
             status += $"\nStarted: {Round > 0}";
+            status += "\nFixed order: " + FixedOrder;
+            if (Round > 0)
+            {
+                if (CurrentTeam != -1)
+                {
+                    status += "\nCurrent turn: " + Teams[CurrentTeam].members[_currentCharacter].Name;
+                }
+                else
+                {
+                    status += "\nCurrent turn: " + Characters[_currentCharacter].Name;
+                }
+            }
             status += "\nDM: " + Dm.Username;
             status += "\nAdmins:";
             status = _admins.Select(Data.GetUser).Aggregate(status, (current, user) => current + ("\n" + user.Username));
@@ -374,8 +379,11 @@ namespace BattleBot
                 if (curTeam.members.Contains(character))
                 {
                     curTeam.members.Remove(character);
+                    if (curTeam.members.Count == 0)
+                        Teams.Remove(curTeam);
                     break;
                 }
+
             }
 
             result += $"{character.Name} was moved to {team.Name}.";
@@ -430,7 +438,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -450,7 +458,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -471,7 +479,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -491,7 +499,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -511,7 +519,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -532,7 +540,7 @@ namespace BattleBot
 
             if (character.Hidden)
             {
-                result += character.Name + " was revealed!";
+                result += character.Name + " was revealed!\n";
                 character.Hidden = false;
             }
 
@@ -571,19 +579,19 @@ namespace BattleBot
         {
             if (!FixedOrder || character.Npc) return true;
 
-            if (currentTeam != -1)
+            if (CurrentTeam != -1)
             {
-                if (character.Name.Equals(Teams[currentTeam].members[currentCharacter].Name))
+                if (character.Name.Equals(Teams[CurrentTeam].members[_currentCharacter].Name))
                     return true;
             }
-            else if (character.Name.Equals(Characters[currentCharacter].Name))
+            else if (character.Name.Equals(Characters[_currentCharacter].Name))
                     return true;
             return false;
         }
 
         public string SetTurn(Character character)
         {
-            if (FixedOrder)
+            if (!FixedOrder)
             {
                 return Log("Cannot set turn, this event does not have fixed order enabled.");
 
@@ -594,14 +602,15 @@ namespace BattleBot
                 return Log($"Cannot set turn, {character.Name} is an NPC and is therefore not restricted by turns.");
             }
 
-            if (currentTeam == -1)
+            if (CurrentTeam == -1)
             {
                 for (int i = 0; i < Characters.Count; i++)
                 {
                     if (Characters[i].Name.Equals(character.Name))
                     {
-                        currentCharacter = i;
-                        return Log($"{Characters[i].Name}'s turn:");
+                        _currentCharacter = i;
+                        SocketUser client = Data.Client.GetUser(Characters[i].Admins[0].Id);
+                        return $"\n{Characters[i].Name}'s turn, {client.Mention}.";
                     }
                 }
             }
@@ -609,13 +618,17 @@ namespace BattleBot
             {
                 for (int i = 0; i < Teams.Count; i++)
                 {
-                    for (int j = 0; j < Teams[i].members.Count; j++)
+                    Team team = Teams[i];
+                    if (team.members.Count <= 0) continue;
+
+                    for (int j = 0; j < team.members.Count; j++)
                     {
-                        if (Teams[i].members[j].Name == character.Name)
+                        if (team.members[j].Name == character.Name)
                         {
-                            currentTeam = i;
-                            currentCharacter = j;
-                            return Log($"{Characters[i].Name}'s turn:");
+                            CurrentTeam = i;
+                            _currentCharacter = j;
+                            SocketUser client = Data.Client.GetUser(team.members[i].Admins[0].Id);
+                            return $"\n{team.members[i].Name}'s turn, {client.Mention}.";
                         }
                     }
                 }
@@ -623,41 +636,52 @@ namespace BattleBot
             return Log("Something wrong happened trying to set turn.");
         }
 
-        private string NextTurn()
+        internal string NextTurn()
         {
             if (!FixedOrder) return "";
-            if (currentTeam != -1)
+            if (CurrentTeam != -1)
             {
-                currentTeam++;
-                for (var index = currentTeam; index < Teams.Count; index++)
+                for (var index = CurrentTeam; index < Teams.Count; index++)
                 {
                     Team team = Teams[index];
                     if (team.members.Count <= 0) continue;
-                    currentCharacter++;
-                    for (int i = currentCharacter; i < team.members.Count; i++)
+
+                    if (team.members[_currentCharacter].Actionpoints <= 0)
                     {
-                        if (!team.members[i].Npc)
+                        _currentCharacter++;
+                    }
+
+                    for (int i = _currentCharacter; i < team.members.Count; i++)
+                    {
+                        if (!team.members[i].Npc && team.members[i].Actionpoints > 0)
                         {
-                            currentTeam = index;
-                            currentCharacter = i;
-                            return $"\n{team.members[i].Name}'s turn:";
+                            CurrentTeam = index;
+                            _currentCharacter = i;
+                            SocketUser client = Data.Client.GetUser(team.members[i].Admins[0].Id);
+                            return $"\n{team.members[i].Name}'s turn, {client.Mention}.";
                         }
                     }
                 }
-                currentTeam = 0;
-                currentCharacter = 0;
+                CurrentTeam = 0;
+                _currentCharacter = 0;
                 return NextTurn();
             }
-            currentCharacter++;
-            for (int i = currentCharacter; i < Characters.Count; i++)
+
+            if (Characters[_currentCharacter].Actionpoints <= 0)
             {
-                if (!Characters[i].Npc)
+                _currentCharacter++;
+            }
+
+            for (int i = _currentCharacter; i < Characters.Count; i++)
+            {
+                if (!Characters[i].Npc && Characters[i].Actionpoints > 0)
                 {
-                    currentCharacter = i;
-                    return $"\n{Characters[i].Name}'s turn:";
+                    _currentCharacter = i;
+                    SocketUser client = Data.Client.GetUser(Characters[i].Admins[0].Id);
+                    return $"\n{Characters[i].Name}'s turn, {client.Mention}.";
                 }
             }
-            currentCharacter = 0;
+            _currentCharacter = 0;
             return NextTurn();
         }
 
@@ -681,6 +705,9 @@ namespace BattleBot
             }
 
             string status = result + $"\n\n\n-------------- Round {Round++} is done --------------" + RoundStatus();
+
+            if (CurrentTeam != -1) CurrentTeam = 0;
+            _currentCharacter = 0;
 
             return status + NextTurn();
         }
@@ -729,7 +756,7 @@ namespace BattleBot
             {
                 foreach (Team team in Teams)
                 {
-                    if (team.members.Count > 0 && !team.Hidden)
+                    if (team.members.Count > 0 && !team.IsHidden())
                     {
                         status += "\n" + team.GetStatus() + "\n";
                     }
@@ -786,7 +813,7 @@ namespace BattleBot
                     user.ActiveEvents.Remove(Channel.Id);
                 }
 
-                if (user != null && user.CurrentEvent.Id.Equals(Id))
+                if (user != null && (user.CurrentEvent == null || user.CurrentEvent.Id.Equals(Id)))
                 {
                     user.CurrentEvent = null;
                 }

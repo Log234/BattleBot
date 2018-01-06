@@ -418,9 +418,9 @@ namespace BattleBot
             }
 
             string result = character.Name + " used a health potion.";
-            result += "\n" + character.HealthPotions + " health potions remaining.";
             character.Health += 1;
             character.HealthPotions--;
+            result += "\n" + character.HealthPotions + " health potions remaining.";
 
             if (character.Actionpoints > 0)
                 result += "\n" + character.Actionpoints + " action points remaining.";

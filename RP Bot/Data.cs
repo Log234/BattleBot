@@ -561,7 +561,6 @@ namespace BattleBot
         public string Name { get; }
         public HashSet<string> aliases = new HashSet<string>();
         public List<Character> members = new List<Character>();
-        public bool Hidden { get; set; }
 
         public Team(string name)
         {
@@ -571,6 +570,27 @@ namespace BattleBot
             {
                 aliases.Add(name.Substring(0, name.IndexOf(" ")).ToLower());
             }
+        }
+
+        public void Hide()
+        {
+            foreach (Character member in members)
+            {
+                member.Hidden = true;
+            }
+        }
+
+        public void Reveal()
+        {
+            foreach (Character member in members)
+            {
+                member.Hidden = false;
+            }
+        }
+
+        public bool IsHidden()
+        {
+            return members.All(member => member.Hidden);
         }
 
         public bool IsDead()

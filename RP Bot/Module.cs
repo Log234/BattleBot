@@ -18,7 +18,12 @@ namespace BattleBot
         {
             if (Context.Message.Channel is SocketGuildChannel channel)
             {
-                await ReplyAsync(Data.GetGuild(channel.Guild).GetStatus());
+                string result = Data.GetGuild(channel.Guild).GetStatus();
+
+                while (result.Length > 0)
+                {
+                    await ReplyAsync(Utilities.FixOverflow(result, out result));
+                }
                 return;
             }
             await ReplyAsync("Currently not in a guild channel.");
@@ -81,7 +86,12 @@ namespace BattleBot
         [Summary("Prints the status of a channel.")]
         public async Task StatusChannel()
         {
-            await ReplyAsync(Data.GetChannel(Context.Message.Channel as SocketChannel).GetStatus());
+            string result = Data.GetChannel(Context.Message.Channel as SocketChannel).GetStatus();
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         [Group("remove")]
@@ -155,7 +165,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.Status());
+            string result = curEvent.Status();
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Event full status
@@ -170,7 +185,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.FullStatus());
+            string result = curEvent.FullStatus();
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Start an event
@@ -343,6 +363,12 @@ namespace BattleBot
                 public async Task NewCharacter([Remainder] string name)
                 {
                     Event curEvent = Data.GetEvent(Context);
+                    if (curEvent == null)
+                    {
+                        await ReplyAsync("Could not find the event.");
+                        return;
+                    }
+
                     User user = Data.GetUser(Context.Message.Author);
 
                     Character character = new Character(name, 1, 1, user);
@@ -751,6 +777,11 @@ namespace BattleBot
                 if (value)
                 {
                     await ReplyAsync("Fixed order is now enabled.");
+                    if (curEvent.Round > 0)
+                    {
+                        if (curEvent.Teams.Count > 1) curEvent.CurrentTeam = 0;
+                        await ReplyAsync(curEvent.NextTurn());
+                    }
                 }
                 else
                 {
@@ -1137,7 +1168,7 @@ namespace BattleBot
                     return;
                 }
 
-                team.Hidden = true;
+                team.Hide();
 
                 foreach (Character teamMember in team.members)
                 {
@@ -1210,7 +1241,7 @@ namespace BattleBot
                     return;
                 }
 
-                team.Hidden = false;
+                team.Reveal();
 
                 foreach (Character teamMember in team.members)
                 {
@@ -1302,7 +1333,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.Attack(character, targets));
+            string result = curEvent.Attack(character, targets);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // melee attacks
@@ -1350,7 +1386,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.Ranged(character, targets));
+            string result = curEvent.Ranged(character, targets);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Heals
@@ -1392,7 +1433,12 @@ namespace BattleBot
                 }
             }
 
-            await ReplyAsync(curEvent.Heal(character, targets));
+            string result = curEvent.Heal(character, targets);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Wards
@@ -1434,7 +1480,12 @@ namespace BattleBot
                 }
             }
 
-            await ReplyAsync(curEvent.Ward(character, targets));
+            string result = curEvent.Ward(character, targets);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Blocks
@@ -1463,7 +1514,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.Block(character));
+            string result = curEvent.Block(character);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
 
         // Potions
@@ -1497,7 +1553,12 @@ namespace BattleBot
                     return;
                 }
 
-                await ReplyAsync(curEvent.PotionHealth(character));
+                string result = curEvent.PotionHealth(character);
+
+                while (result.Length > 0)
+                {
+                    await ReplyAsync(Utilities.FixOverflow(result, out result));
+                }
             }
         }
 
@@ -1527,7 +1588,12 @@ namespace BattleBot
                 return;
             }
 
-            await ReplyAsync(curEvent.Pass(character));
+            string result = curEvent.Pass(character);
+
+            while (result.Length > 0)
+            {
+                await ReplyAsync(Utilities.FixOverflow(result, out result));
+            }
         }
     }
 
@@ -1560,7 +1626,11 @@ namespace BattleBot
 
                 User user = Data.GetUser(Context.Message.Author);
                 user.SetActiveEvent(Context.Channel.Id, curEvent);
-                user.CurrentEvent = curEvent;
+
+                if (curEvent.IsAdmin(user))
+                {
+                    user.CurrentEvent = curEvent;
+                }
 
                 await ReplyAsync(user.Username + "'s active event for this channel is now: " + curEvent.Name);
             }

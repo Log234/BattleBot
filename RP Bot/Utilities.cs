@@ -71,5 +71,26 @@ namespace BattleBot
             strList = strList.Substring(0, strList.Length - 2);
             return strList;
         }
+        public static string FixOverflow(string inMsg, out string outMsg)
+        {
+            if (inMsg.Length <= 2000)
+            {
+                string newMsg = inMsg;
+                outMsg = "";
+                return newMsg;
+            }
+
+            for (int i = 1999; i < inMsg.Length; i++)
+            {
+                if (inMsg[i] == '\n')
+                {
+                    outMsg = inMsg.Substring(i + 1);
+                    return inMsg.Substring(0, i);
+                }
+            }
+
+            outMsg = inMsg.Substring(2000);
+            return inMsg.Substring(0, 2000);
+        }
     }
 }
